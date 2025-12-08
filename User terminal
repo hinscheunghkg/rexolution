@@ -1,0 +1,219 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+
+// --- ICONS WRAPPER ---
+const IconWrapper = ({ children, size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    {children}
+  </svg>
+);
+
+const Wallet = (p) => <IconWrapper {...p}><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></IconWrapper>;
+const TrendingUp = (p) => <IconWrapper {...p}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></IconWrapper>;
+const Activity = (p) => <IconWrapper {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></IconWrapper>;
+const Zap = (p) => <IconWrapper {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconWrapper>;
+const CheckSquare = (p) => <IconWrapper {...p}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></IconWrapper>;
+const Square = (p) => <IconWrapper {...p}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></IconWrapper>;
+const ArrowRight = (p) => <IconWrapper {...p}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></IconWrapper>;
+const Droplet = (p) => <IconWrapper {...p}><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></IconWrapper>;
+const CheckCircle2 = (p) => <IconWrapper {...p}><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></IconWrapper>;
+const Layers = (p) => <IconWrapper {...p}><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></IconWrapper>;
+const Sliders = (p) => <IconWrapper {...p}><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" /><line x1="17" y1="16" x2="23" y2="16" /></IconWrapper>;
+const Clock = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconWrapper>;
+const ArrowUpRight = (p) => <IconWrapper {...p}><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></IconWrapper>;
+const Lock = (p) => <IconWrapper {...p}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></IconWrapper>;
+
+// --- CONFIG ---
+const INITIAL_POOL_SIZE = 50000;
+const MAX_MULTIPLIER = 3.0; 
+
+const TASKS_DEF = [
+  { id: 't1', name: 'Follow X & Discord', weight: 0.10, desc: 'Social Signal' },
+  { id: 't2', name: 'Swap >$100 (Core)', weight: 0.50, desc: 'On-Chain Volume' },
+  { id: 't3', name: 'Add >$500 LP', weight: 0.40, desc: 'High Value Action' },
+];
+
+const GAP_ACTIONS = [
+  { id: 'g1', name: 'Hold > 0.5 ETH', pmsBoost: +15, type: 'Passive' },
+  { id: 'g2', name: 'Volume > $10k (30d)', pmsBoost: +25, type: 'Active' },
+  { id: 'g3', name: 'Gitcoin Passport > 20', pmsBoost: +10, type: 'Identity' },
+];
+
+// --- CUSTOM CHART ---
+const YieldChart = ({ data, pmsScore, isPreMarket }) => {
+  const width = 800; const height = 300; const padding = 20;
+  if (!data || data.length === 0) return null;
+  const maxPrice = Math.max(...data.map(d => d.ceiling)) * 1.1; const minPrice = 0;
+  const xScale = (index) => (index / (data.length - 1)) * (width - 2 * padding) + padding;
+  const yScale = (price) => height - padding - ((price - minPrice) / (maxPrice - minPrice)) * (height - 2 * padding);
+  const floorPoints = data.map((d, i) => `${xScale(i)},${yScale(d.floor)}`).join(' ');
+  const ceilingPoints = data.map((d, i) => `${xScale(i)},${yScale(d.ceiling)}`).join(' ');
+  const areaPoints = [...data.map((d, i) => `${xScale(i)},${yScale(d.ceiling)}`), ...data.slice().reverse().map((d, i) => `${xScale(data.length - 1 - i)},${yScale(d.floor)}`)].join(' ');
+  const lastIdx = data.length - 1; const lastX = xScale(lastIdx);
+  const currentFloor = data[lastIdx].floor; const currentCeiling = data[lastIdx].ceiling;
+  const userPrice = currentFloor + (currentCeiling - currentFloor) * (pmsScore / 100);
+  const lastY = yScale(userPrice); const dotColor = pmsScore > 80 ? '#fbbf24' : pmsScore > 40 ? '#22d3ee' : '#e2e8f0';
+
+  return (
+    <div className="w-full h-[300px] bg-slate-900/50 rounded-xl border border-slate-800 relative overflow-hidden shadow-inner group">
+      <div className="absolute top-4 left-4 z-10 bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700 backdrop-blur-sm"><h3 className="text-slate-300 text-xs font-mono flex items-center gap-2">{isPreMarket ? <Clock size={14} className="text-orange-400"/> : <TrendingUp size={14} className="text-emerald-400"/>}{isPreMarket ? "PROJECTED YIELD (LOCKED)" : "LIVE YIELD CHANNEL"}</h3></div>
+      {isPreMarket && <div className="absolute inset-0 bg-slate-950/60 z-0 flex items-center justify-center pointer-events-none"><div className="bg-slate-900/90 border border-slate-700 p-4 rounded-xl backdrop-blur-md flex flex-col items-center"><Lock className="text-slate-400 mb-2" size={24}/><span className="text-slate-200 font-bold tracking-widest text-sm">MARKET OPENS IN 14:02:55</span></div></div>}
+      <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="overflow-visible relative z-10">
+        <defs><linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fbbf24" stopOpacity={isPreMarket ? 0.1 : 0.2} /><stop offset="100%" stopColor="#fbbf24" stopOpacity="0" /></linearGradient></defs>
+        <path d={`M ${areaPoints} Z`} fill="url(#goldGradient)" opacity="0.4" />
+        <polyline points={ceilingPoints} fill="none" stroke="#fbbf24" strokeWidth="2" strokeDasharray={isPreMarket ? "4 4" : "0"} strokeOpacity="0.8" />
+        <polyline points={floorPoints} fill="none" stroke="#e2e8f0" strokeWidth="1.5" strokeDasharray="4 4" strokeOpacity="0.5" />
+        <line x1={padding} y1={yScale(data[0].floor + (data[0].ceiling - data[0].floor) * (pmsScore / 100))} x2={lastX} y2={lastY} stroke={dotColor} strokeWidth="1" strokeDasharray="2 2" opacity="0.5" />
+        <circle cx={lastX} cy={lastY} r="6" fill={dotColor} stroke="white" strokeWidth="2">{!isPreMarket && <animate attributeName="r" values="6;10;6" dur="2s" repeatCount="indefinite" />}</circle>
+        <text x={width-padding} y={yScale(currentCeiling) - 10} fill="#fbbf24" fontSize="10" textAnchor="end">MAX (PMS 100)</text><text x={width-padding} y={yScale(currentFloor) + 15} fill="#94a3b8" fontSize="10" textAnchor="end">FLOOR (PMS 0)</text>
+      </svg>
+    </div>
+  );
+};
+
+// --- DATA LOGIC ---
+const generateChartData = (tick, isPreMarket) => {
+  const data = [];
+  for (let i = 0; i < 50; i++) {
+    const time = i + tick;
+    const base = isPreMarket ? 10 : 10 + Math.sin(time * 0.1) * 2 + (time * 0.05);
+    data.push({ time, floor: parseFloat(Math.max(base, 2).toFixed(2)), ceiling: parseFloat((base * MAX_MULTIPLIER).toFixed(2)) });
+  }
+  return data;
+};
+
+// --- COMPONENT: ALPHA AUDIT (Pre-Market) ---
+const AlphaAudit = ({ pmsScore, setPmsScore }) => {
+  return (
+    <div className="bg-slate-900 border border-slate-700 rounded-xl p-5 shadow-2xl flex-1 flex flex-col h-full animate-in slide-in-from-right duration-500">
+      <div className="flex justify-between items-center mb-6"><h3 className="text-white font-bold tracking-wider flex items-center gap-2 text-sm"><Activity size={16} className="text-orange-400" /> ALPHA CALIBRATION</h3><span className="text-[9px] bg-orange-900/30 text-orange-400 border border-orange-500/30 px-2 py-1 rounded animate-pulse">WINDOW OPEN</span></div>
+      <div className="mb-6 bg-slate-800/50 rounded-xl p-4 border border-slate-700"><div className="flex justify-between items-center mb-2"><span className="text-xs text-slate-400">Current PMS</span><span className="text-2xl font-mono font-bold text-white">{pmsScore}</span></div><div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500" style={{ width: `${pmsScore}%` }}></div></div><div className="flex justify-between mt-1 text-[9px] text-slate-500 font-mono"><span>NEWBIE</span><span>WHALE (100)</span></div></div>
+      <div className="space-y-3 flex-1"><p className="text-xs text-slate-500 font-bold uppercase mb-2">Gap Analysis: Missing Signals</p>{GAP_ACTIONS.map((action) => (<div key={action.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-700/50 bg-slate-950/50 hover:border-orange-500/30 transition-all group"><div className="flex items-center gap-3"><div className="p-1.5 bg-slate-800 rounded text-slate-400 group-hover:text-orange-400 transition-colors"><ArrowUpRight size={14}/></div><div><div className="text-[10px] text-slate-500 font-mono uppercase">{action.type}</div><div className="text-xs font-bold text-slate-300">{action.name}</div></div></div><button onClick={() => setPmsScore(Math.min(100, pmsScore + action.pmsBoost))} className="px-3 py-1.5 bg-slate-800 hover:bg-orange-500/20 hover:text-orange-400 text-xs text-slate-300 rounded border border-slate-700 hover:border-orange-500/50 transition-all">+{action.pmsBoost} PMS</button></div>))}</div>
+      <div className="mt-6 pt-4 border-t border-slate-800"><div className="bg-emerald-900/10 border border-emerald-500/20 p-3 rounded-lg flex gap-3"><TrendingUp className="text-emerald-400 shrink-0" size={18}/><p className="text-[10px] text-emerald-200 leading-relaxed"><span className="font-bold">Alpha Opportunity:</span> By increasing your PMS to <strong>{Math.min(100, pmsScore + 25)}</strong>, your estimated yield for this event increases by <strong>+42%</strong>.</p></div></div>
+    </div>
+  );
+};
+
+// --- ORDER BOOK COMPONENT ---
+const OrderBook = ({ currentPrice, pmsScore }) => {
+  const [trades, setTrades] = useState([{ id: 1, user: '0x3a...92', pms: 98, percent: 100, price: 36.42 }, { id: 2, user: '0x8b...11', pms: 45, percent: 50, price: 10.60 }, { id: 3, user: '0x1f...44', pms: 12, percent: 10, price: 1.21 }]);
+  const priceRef = useRef(currentPrice);
+  useEffect(() => { priceRef.current = currentPrice; }, [currentPrice]);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!priceRef.current || !priceRef.current.ceiling) return;
+      const curr = priceRef.current;
+      const randomPMS = Math.floor(Math.random() * 100);
+      const intents = [10, 50, 60, 90, 100]; 
+      const randomIntent = intents[Math.floor(Math.random() * intents.length)];
+      const indexPrice = curr.floor + (curr.ceiling - curr.floor) * (randomPMS / 100);
+      const payout = indexPrice * (randomIntent / 100);
+      const variation = (Math.random() * 0.2) - 0.1;
+      const newTrade = { id: Date.now() + Math.random(), user: `0x${Math.floor(Math.random()*16777215).toString(16).substring(0,2)}...${Math.floor(Math.random()*16777215).toString(16).substring(0,2)}`, pms: randomPMS, percent: randomIntent, price: payout + variation };
+      setTrades(prev => [newTrade, ...prev.slice(0, 5)]); 
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg flex flex-col h-full gap-4">
+      <div>
+        <div className="flex justify-between items-center mb-2 border-b border-slate-800 pb-2"><h3 className="text-slate-300 text-xs font-bold uppercase flex items-center gap-2"><Layers size={14} className="text-indigo-400"/> Price Width</h3><span className="text-[10px] text-slate-500 font-mono">SPREAD</span></div>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center p-2 rounded border border-amber-400/30 bg-amber-400/10"><div className="flex flex-col"><span className="text-[10px] font-bold text-amber-400">MAX BID (PMS 100)</span><span className="text-[9px] text-slate-500 font-mono">Whale Ceiling</span></div><div className="text-right"><span className="font-mono font-bold text-amber-400">${currentPrice?.ceiling ? currentPrice.ceiling.toFixed(2) : "0.00"}</span></div></div>
+          <div className="flex justify-between items-center p-2 rounded border border-blue-500/50 bg-blue-500/10"><div className="flex flex-col"><span className="text-[10px] font-bold text-blue-400">YOUR BID (PMS {pmsScore})</span><span className="text-[9px] text-slate-500 font-mono">Based on History</span></div><div className="text-right"><span className="font-mono font-bold text-blue-400">${(currentPrice.floor + (currentPrice.ceiling - currentPrice.floor) * (pmsScore / 100)).toFixed(2)}</span></div></div>
+          <div className="flex justify-between items-center p-2 rounded border border-slate-700 bg-slate-800 opacity-60"><div className="flex flex-col"><span className="text-[10px] font-bold text-slate-400">MIN BID (PMS 0)</span><span className="text-[9px] text-slate-500 font-mono">Public Floor</span></div><div className="text-right"><span className="font-mono font-bold text-slate-400">${currentPrice?.floor ? currentPrice.floor.toFixed(2) : "0.00"}</span></div></div>
+        </div>
+      </div>
+      <div className="flex-1 border-t border-slate-800 pt-4">
+        <div className="flex justify-between items-center mb-2"><h3 className="text-slate-300 text-xs font-bold uppercase flex items-center gap-2"><Activity size={14} className="text-emerald-400"/> Recent Fills</h3><span className="text-[10px] text-slate-500 font-mono">LIVE</span></div>
+        <div className="space-y-1">
+          <div className="grid grid-cols-4 text-[9px] text-slate-500 font-bold mb-1 px-1"><span>USER</span><span className="text-center">PMS</span><span className="text-center">SELL %</span><span className="text-right">PAYOUT</span></div>
+          {trades.map((trade) => (<div key={trade.id} className="grid grid-cols-4 text-[10px] font-mono px-1 py-0.5 animate-in fade-in slide-in-from-right-4 duration-300"><span className="text-slate-400">{trade.user}</span><span className={`text-center font-bold ${trade.pms > 80 ? 'text-amber-400' : trade.pms > 40 ? 'text-cyan-400' : 'text-slate-500'}`}>{trade.pms}</span><span className="text-center text-slate-300">{trade.percent}%</span><span className="text-right text-emerald-400">${trade.price.toFixed(2)}</span></div>))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const RexolutionTerminalV2 = () => {
+  const [isPreMarket, setIsPreMarket] = useState(false); 
+  const [pmsScore, setPmsScore] = useState(85); 
+  const [tick, setTick] = useState(0);
+  const [selectedTasks, setSelectedTasks] = useState(['t1', 't2', 't3']);
+  const [poolLiquidity, setPoolLiquidity] = useState(INITIAL_POOL_SIZE);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [txState, setTxState] = useState('IDLE'); 
+
+  useEffect(() => { const interval = setInterval(() => setTick(t => t + 1), 1000); return () => clearInterval(interval); }, []);
+  const chartData = useMemo(() => {
+    const data = [];
+    for (let i = 0; i < 50; i++) {
+      const time = i + tick; const base = isPreMarket ? 10 : 10 + Math.sin(time * 0.1) * 2 + (time * 0.05);
+      data.push({ time, floor: parseFloat(Math.max(base, 2).toFixed(2)), ceiling: parseFloat((base * MAX_MULTIPLIER).toFixed(2)) });
+    }
+    return data;
+  }, [tick, isPreMarket]);
+  const currentPrice = chartData[chartData.length - 1];
+  const indexPrice = currentPrice.floor + (currentPrice.ceiling - currentPrice.floor) * (pmsScore / 100);
+  const selectedWeight = selectedTasks.reduce((acc, taskId) => { const task = TASKS_DEF.find(t => t.id === taskId); return acc + (task ? task.weight : 0); }, 0);
+  const orderValue = indexPrice * selectedWeight;
+  const poolPercentage = (poolLiquidity / INITIAL_POOL_SIZE) * 100;
+
+  const handleAtomicTrade = () => {
+    if (orderValue > poolLiquidity) { alert("Trade Failed: Liquidity Drained (Slippage Error)"); return; }
+    setTxState('PROCESSING');
+    setTimeout(() => { setTxState('SUCCESS'); setWalletBalance(prev => prev + orderValue); setPoolLiquidity(prev => prev - orderValue); setTimeout(() => setTxState('IDLE'), 3000); }, 2000);
+  };
+  const toggleTask = (id) => { if (selectedTasks.includes(id)) { setSelectedTasks(prev => prev.filter(t => t !== id)); } else { setSelectedTasks(prev => [...prev, id]); } };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans p-4 md:p-8 flex flex-col items-center">
+      <div className="w-full max-w-6xl flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+        <div><h1 className="text-2xl font-bold text-white tracking-wider flex items-center gap-2">🦖 REXOLUTION <span className="bg-slate-800 text-slate-400 text-[10px] px-2 py-1 rounded font-mono">TERMINAL v3.3</span></h1></div>
+        <div className="flex gap-4">
+           <div className="flex bg-slate-900 rounded p-1 border border-slate-800"><button onClick={() => setIsPreMarket(true)} className={`px-3 py-1 text-xs rounded transition-colors ${isPreMarket ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50 font-bold' : 'text-slate-500 hover:text-white'}`}>PRE-MKT</button><button onClick={() => setIsPreMarket(false)} className={`px-3 py-1 text-xs rounded transition-colors ${!isPreMarket ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 font-bold' : 'text-slate-500 hover:text-white'}`}>LIVE</button></div>
+           <div className="flex items-center gap-3 bg-slate-900 rounded-lg p-2 border border-slate-800"><Sliders size={16} className="text-indigo-400"/><div className="flex flex-col w-32"><div className="flex justify-between text-[8px] text-slate-500 font-mono uppercase font-bold"><span>PMS Score</span><span className="text-indigo-400">{pmsScore}</span></div><input type="range" min="0" max="100" value={pmsScore} onChange={(e) => setPmsScore(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-800 rounded-full appearance-none cursor-pointer accent-indigo-500"/></div></div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 font-mono text-sm"><Wallet size={16} /> ${walletBalance.toFixed(2)}</div>
+        </div>
+      </div>
+
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 flex flex-col gap-6">
+          <div className="flex justify-between items-end"><div><h2 className="text-3xl font-bold text-white flex items-center gap-2">$APEX-IDX <span className="text-sm font-normal text-slate-400 ml-2">Apex Finance Index</span></h2></div><div className="text-right"><div className="text-sm text-slate-400 font-mono uppercase">{isPreMarket ? 'Projected' : 'Live'} Index Price</div><div className={`text-4xl font-mono font-bold ${isPreMarket ? 'text-slate-300' : 'text-white'}`}>${indexPrice.toFixed(2)}</div></div></div>
+          <YieldChart data={chartData} pmsScore={pmsScore} isPreMarket={isPreMarket} />
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800"><div className="text-xs text-slate-500 mb-1">TIME REMAINING</div><div className="text-white font-bold flex items-center gap-2"><Clock size={16} className="text-blue-400"/> 04D : 12H : 30M</div></div>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800"><div className="text-xs text-slate-500 mb-1">ALPHA MULTIPLIER</div><div className={`font-bold ${pmsScore > 80 ? 'text-amber-400' : 'text-slate-300'}`}>{(1 + ((MAX_MULTIPLIER - 1) * (pmsScore / 100))).toFixed(2)}x</div></div>
+            <div className="bg-slate-900 p-4 rounded-xl border border-slate-800"><div className="text-xs text-slate-500 mb-1">TOTAL LIQUIDITY</div><div className="text-emerald-400 font-bold flex items-center gap-2">${INITIAL_POOL_SIZE.toLocaleString()}</div></div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          {isPreMarket ? (<AlphaAudit pmsScore={pmsScore} setPmsScore={setPmsScore} />) : (
+            <>
+              {/* 1. FLASH TRADE TICKET */}
+              <div className="bg-slate-900 border border-slate-700 rounded-xl p-5 shadow-2xl flex-1 flex flex-col animate-in slide-in-from-bottom duration-500">
+                <div className="flex justify-between items-center mb-4"><h3 className="text-white font-bold tracking-wider flex items-center gap-2 text-sm"><Zap size={16} className="text-emerald-400" /> FLASH TRADE</h3><span className="text-[9px] bg-slate-800 text-slate-400 px-2 py-1 rounded">ATOMIC</span></div>
+                <div className="space-y-2 mb-4 flex-1">
+                  {TASKS_DEF.map((task) => {
+                    const isSelected = selectedTasks.includes(task.id); const value = indexPrice * task.weight;
+                    return (<div key={task.id} onClick={() => toggleTask(task.id)} className={`cursor-pointer flex items-center justify-between p-2.5 rounded-lg border transition-all ${isSelected ? 'bg-emerald-900/10 border-emerald-500/50' : 'bg-slate-950 border-slate-800 hover:border-slate-700'}`}><div className="flex items-center gap-3"><div className={`text-emerald-400 transition-opacity ${isSelected ? 'opacity-100' : 'opacity-30'}`}>{isSelected ? <CheckSquare size={16}/> : <Square size={16}/>}</div><div><div className="text-[10px] text-slate-400 font-mono mb-0.5">{task.weight * 100}% Tranche</div><div className={`text-xs font-medium ${isSelected ? 'text-white' : 'text-slate-500'}`}>{task.name}</div></div></div><div className={`text-xs font-mono ${isSelected ? 'text-white' : 'text-slate-600'}`}>${value.toFixed(2)}</div></div>);
+                  })}
+                </div>
+                <div className="border-t border-slate-700 pt-4 mt-auto"><div className="flex justify-between items-end mb-4"><span className="text-xs text-slate-400 font-bold">PAYOUT</span><span className="text-xl font-mono font-bold text-white">${orderValue.toFixed(2)}</span></div>
+                  {txState === 'SUCCESS' ? (<div className="w-full py-3 bg-emerald-500/20 border border-emerald-500 text-emerald-400 rounded-lg flex items-center justify-center gap-2 font-bold text-sm animate-in fade-in zoom-in"><CheckCircle2 size={18} /> TRADE SETTLED</div>) : (<button onClick={handleAtomicTrade} disabled={selectedTasks.length === 0 || txState === 'PROCESSING'} className={`w-full py-3 rounded-lg font-bold text-sm tracking-wide shadow-lg shadow-emerald-900/20 transition-all flex items-center justify-center gap-2 ${selectedTasks.length === 0 ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-900 transform active:scale-95'}`}>{txState === 'PROCESSING' ? <span className="animate-pulse">VERIFYING...</span> : <>VERIFY & SELL INTENT <ArrowRight size={16}/></>}</button>)}
+                </div>
+              </div>
+              {/* 2. LIQUIDITY GAUGE */}
+              <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 shadow-lg relative overflow-hidden"><div className="flex justify-between items-center mb-2 z-10 relative"><h3 className="text-slate-300 text-xs font-bold uppercase flex items-center gap-2"><Droplet size={14} className={poolPercentage < 20 ? "text-red-500" : "text-blue-400"} /> Pool Liquidity</h3><span className={`font-mono text-[10px] ${poolPercentage < 20 ? "text-red-500 font-bold animate-pulse" : "text-slate-400"}`}>{poolPercentage < 20 ? "DRAINING FAST" : "HEALTHY"}</span></div><div className="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden mb-1 z-10"><div className={`h-full transition-all duration-500 ${poolPercentage < 20 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${poolPercentage}%` }}></div></div><div className="flex justify-between text-[10px] font-mono text-white z-10 relative"><span>${poolLiquidity.toLocaleString()}</span><span className="text-slate-500">/ ${INITIAL_POOL_SIZE.toLocaleString()}</span></div></div>
+              {/* 3. ORDER BOOK */}
+              <div className="h-64 animate-in slide-in-from-right duration-500"><OrderBook currentPrice={currentPrice} pmsScore={pmsScore} /></div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RexolutionTerminalV2;
