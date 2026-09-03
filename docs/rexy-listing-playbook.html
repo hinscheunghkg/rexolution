@@ -1,0 +1,622 @@
+<title>Rexy 上所路線圖</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#F2F5F7; --surface:#FFFFFF; --surface-2:#E9EEF2; --line:#D5DDE3; --line-2:#BCC7CF;
+    --ink:#15212C; --ink-2:#465563; --ink-3:#74838F;
+    --accent:#1B7F4E; --accent-ink:#0F5A36; --accent-tint:#DFF1E6;
+    --s1:#1B7F4E; --s2:#2F5D9E; --s3:#B5472B;
+    --good:#1B7F4E; --warn:#A8701A; --crit:#C2362B; --good-tint:#DFF1E6; --warn-tint:#FBEFD9; --crit-tint:#FAE3DF;
+    --display:"Bricolage Grotesque","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    --body:"IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --ground:#0F1519; --surface:#161E25; --surface-2:#1E2831; --line:#2B3740; --line-2:#3B4954;
+      --ink:#E7EDF1; --ink-2:#AAB6C0; --ink-3:#7E8B96;
+      --accent:#3FB876; --accent-ink:#7ED6A3; --accent-tint:#173328;
+      --s1:#2E9A5D; --s2:#5B8AD0; --s3:#CF6B45;
+      --good:#3FB876; --warn:#D9A24A; --crit:#E0685A; --good-tint:#173328; --warn-tint:#33280F; --crit-tint:#3A1B17;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0F1519; --surface:#161E25; --surface-2:#1E2831; --line:#2B3740; --line-2:#3B4954;
+    --ink:#E7EDF1; --ink-2:#AAB6C0; --ink-3:#7E8B96;
+    --accent:#3FB876; --accent-ink:#7ED6A3; --accent-tint:#173328;
+    --s1:#2E9A5D; --s2:#5B8AD0; --s3:#CF6B45;
+    --good:#3FB876; --warn:#D9A24A; --crit:#E0685A; --good-tint:#173328; --warn-tint:#33280F; --crit-tint:#3A1B17;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  h1,h2,h3,h4{font-family:var(--display);letter-spacing:-.01em;text-wrap:balance;margin:0}
+  p{margin:0}
+  .num,.mono,td.n,th.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .page{display:grid;grid-template-columns:232px minmax(0,1fr);gap:40px;max-width:1240px;margin:0 auto;padding:36px 28px 80px}
+
+  /* ── rail ── */
+  .rail{position:sticky;top:24px;align-self:start;display:flex;flex-direction:column;gap:22px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:15px}
+  .brand b{font-family:var(--display);font-weight:700;font-size:15px}
+  .brand small{display:block;color:var(--ink-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .rail nav{display:flex;flex-direction:column;gap:2px}
+  .rail nav a{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:8px 10px;border-radius:8px;text-decoration:none;color:var(--ink-2);font-size:13px;line-height:1.35}
+  .rail nav a .q{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .rail nav a:hover{background:var(--surface);color:var(--ink)}
+  .rail nav a.on{background:var(--accent-tint);color:var(--accent-ink)}
+  .rail nav a.on .q{color:var(--accent-ink)}
+  .rail .meta{border-top:1px solid var(--line);padding-top:14px;color:var(--ink-3);font-size:11.5px;line-height:1.6}
+  .rail .meta b{color:var(--ink-2);font-weight:500}
+
+  /* ── header ── */
+  .head{display:flex;flex-direction:column;gap:18px;padding-bottom:28px;border-bottom:1px solid var(--line);margin-bottom:38px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink)}
+  h1{font-size:clamp(30px,4vw,46px);line-height:1.1;font-weight:800;max-width:22ch}
+  .lede{max-width:64ch;color:var(--ink-2);font-size:16px}
+  .strip{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+  .strip>div{padding:14px 16px;border-right:1px solid var(--line)}
+  .strip>div:last-child{border-right:0}
+  .strip small{display:block;color:var(--ink-3);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+  .strip strong{display:block;font-family:var(--mono);font-size:19px;font-weight:600;letter-spacing:-.01em}
+  .strip span{display:block;color:var(--ink-3);font-size:11.5px;margin-top:2px}
+
+  /* ── sections ── */
+  section{margin-bottom:64px;scroll-margin-top:24px}
+  .sec-head{display:grid;grid-template-columns:56px 1fr;gap:16px;align-items:start;margin-bottom:20px}
+  .sec-head .q{font-family:var(--display);font-weight:800;font-size:40px;line-height:1;color:var(--accent);padding-top:2px}
+  .sec-head h2{font-size:26px;font-weight:700;line-height:1.2}
+  .sec-head .sub{color:var(--ink-3);font-size:13px;margin-top:4px}
+  .answer{position:relative;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:18px 22px;margin-bottom:26px}
+  .answer .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:6px}
+  .answer p{font-size:16.5px;line-height:1.6;max-width:70ch}
+  .answer p b{font-weight:600}
+  h3{font-size:17px;font-weight:700;margin:32px 0 12px}
+  h3 .k{font-family:var(--mono);font-weight:500;font-size:12px;color:var(--ink-3);margin-left:8px;letter-spacing:.04em}
+  h4{font-size:14px;font-weight:600;margin:0 0 6px}
+  .prose{max-width:70ch;color:var(--ink-2)}
+  .prose+.prose{margin-top:10px}
+  .note{color:var(--ink-3);font-size:12.5px;line-height:1.55;max-width:80ch;margin-top:10px}
+  .note b{color:var(--ink-2);font-weight:500}
+  ul.tight{margin:8px 0 0;padding-left:18px;color:var(--ink-2)}
+  ul.tight li{margin:4px 0}
+  ul.tight li b{color:var(--ink);font-weight:600}
+
+  /* tables */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{font-family:var(--body);text-align:left;font-weight:600;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);padding:11px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+  td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+  tr:last-child td{border-bottom:0}
+  td:first-child{color:var(--ink);font-weight:500}
+  td.n,th.n{text-align:right;white-space:nowrap}
+  td.hi{color:var(--ink);font-weight:600}
+  tr.sum td{background:var(--surface-2);color:var(--ink);font-weight:600}
+  .cmp th{text-align:left}
+  .cmp td:first-child{width:170px}
+  .cmp .base th{color:var(--accent-ink)}
+
+  /* chips */
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 7px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap;line-height:1.6}
+  .chip i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+  .chip.good{background:var(--good-tint);color:var(--good)}
+  .chip.warn{background:var(--warn-tint);color:var(--warn)}
+  .chip.crit{background:var(--crit-tint);color:var(--crit)}
+  .chip.neutral{background:var(--surface-2);color:var(--ink-2)}
+
+  /* cards row */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .card .t{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+  .card h4{font-size:15px}
+  .card p,.card li{font-size:13px;color:var(--ink-2)}
+  .card ul{margin:8px 0 0;padding-left:16px}
+  .card li{margin:3px 0}
+  .card.base{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+
+  /* figure */
+  figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px 12px}
+  figure figcaption{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+  figure figcaption b{font-size:14px;font-weight:600}
+  figure figcaption span{color:var(--ink-3);font-size:12px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+  .legend i.sq{width:11px;height:11px;border-radius:3px}
+  svg{display:block;width:100%;height:auto}
+  svg text{font-family:var(--mono);font-size:11px;fill:var(--ink-3)}
+  svg .lbl{font-family:var(--body);font-size:11.5px;fill:var(--ink-2)}
+  svg .grid{stroke:var(--line);stroke-width:1}
+  svg .zero{stroke:var(--line-2);stroke-width:1.5}
+  .tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--ground);font-size:12px;line-height:1.5;padding:8px 10px;border-radius:7px;opacity:0;transition:opacity .12s;z-index:20;font-family:var(--mono);white-space:nowrap}
+  .tip.on{opacity:1}
+
+  /* budget bars */
+  .bars{display:grid;grid-template-columns:200px 1fr 70px;gap:8px 12px;align-items:center;font-size:13px}
+  .bars .track{height:14px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+  .bars .fill{height:100%;background:var(--accent);border-radius:4px 4px 4px 4px}
+  .bars .v{text-align:right;font-family:var(--mono);color:var(--ink-2)}
+
+  /* stacked cash bar */
+  .stack{display:grid;grid-template-columns:110px 1fr 80px;gap:10px 12px;align-items:center;font-size:13px}
+  .stack .seg-row{display:flex;height:26px;gap:2px}
+  .stack .seg{height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10.5px;color:#fff;border-radius:3px;min-width:2px;overflow:hidden;white-space:nowrap}
+  .stack .v{text-align:right;font-family:var(--mono);color:var(--ink);font-weight:600}
+  .swatches{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12px;color:var(--ink-2)}
+  .swatches span{display:inline-flex;align-items:center;gap:6px}
+  .swatches i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+  /* token reconciliation */
+  .recon{display:grid;gap:14px}
+  .recon .row{display:grid;grid-template-columns:190px 1fr;gap:12px;align-items:end;font-size:13px}
+  .recon .row .lab{color:var(--ink-2)}
+  .recon .row .lab b{display:block;color:var(--ink);font-weight:600}
+  .recon .bar{position:relative;height:30px;margin-top:20px;background:var(--surface-2);border-radius:5px;overflow:visible}
+  .recon .bar .seg{position:absolute;top:0;height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10.5px;color:#fff;border-right:2px solid var(--surface);white-space:nowrap;overflow:hidden}
+  .recon .bar .cap{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--crit)}
+  .recon .bar .cap span{position:absolute;top:-17px;left:4px;font-family:var(--mono);font-size:10.5px;color:var(--crit);white-space:nowrap}.recon .bar .cap span.r{left:auto;right:4px}
+
+  /* gates */
+  .gates{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .gate{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 13px;font-size:12.5px}
+  .gate b{display:block;font-size:13px;margin-bottom:4px}
+  .gate span{color:var(--ink-3)}
+
+  /* week plan */
+  .weeks{display:grid;gap:8px}
+  .wk{display:grid;grid-template-columns:118px repeat(4,1fr);gap:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .wk>div{padding:12px 13px;font-size:12.5px;color:var(--ink-2);border-right:1px solid var(--line);line-height:1.5}
+  .wk>div:last-child{border-right:0}
+  .wk .w{background:var(--surface-2);color:var(--ink)}
+  .wk .w b{display:block;font-family:var(--mono);font-size:12px;color:var(--ink-3);font-weight:500}
+  .wk .w strong{display:block;font-size:14px;font-weight:700;margin:2px 0}
+  .wk .w em{display:block;font-style:normal;font-size:11.5px;color:var(--ink-3)}
+  .wk ul{margin:0;padding-left:14px}
+  .wk li{margin:2px 0}
+  .wk .id{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+  .wk.tge{border-color:var(--accent)}
+  .wk.tge .w{background:var(--accent-tint);color:var(--accent-ink)}
+  .wk.tge .w b,.wk.tge .w em{color:var(--accent-ink)}
+  .wk-head{display:grid;grid-template-columns:118px repeat(4,1fr);padding:0 13px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .wk-head>div{padding:0 13px 4px 0}
+
+  /* scenarios */
+  .scen{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .scen .card{padding:0;overflow:hidden}
+  .scen .top{padding:14px 18px;border-bottom:1px solid var(--line)}
+  .scen .top .t{margin-bottom:2px}
+  .scen .top h4{font-size:17px}
+  .scen .top .big{font-family:var(--mono);font-size:26px;font-weight:600;margin-top:8px;letter-spacing:-.01em}
+  .scen .top .big small{font-size:12px;color:var(--ink-3);font-weight:400;margin-left:6px;font-family:var(--body)}
+  .scen dl{margin:0;padding:12px 18px;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px}
+  .scen dt{color:var(--ink-3)}
+  .scen dd{margin:0;color:var(--ink-2)}
+  .scen dd b{color:var(--ink);font-weight:600}
+  .scen .card.best .top{border-top:4px solid var(--s1)}
+  .scen .card.mid .top{border-top:4px solid var(--s2)}
+  .scen .card.worst .top{border-top:4px solid var(--s3)}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .foot{border-top:1px solid var(--line);padding-top:18px;color:var(--ink-3);font-size:12px;line-height:1.6;max-width:90ch}
+  .foot b{color:var(--ink-2);font-weight:500}
+
+  @media (max-width:1000px){
+    .page{grid-template-columns:1fr;gap:20px;padding:22px 16px 60px}
+    .rail{position:static}
+    .rail nav{flex-direction:row;flex-wrap:wrap}
+    .rail .meta{display:none}
+    .strip{grid-template-columns:repeat(2,1fr)}
+    .strip>div{border-bottom:1px solid var(--line)}
+    .cards,.scen,.two{grid-template-columns:1fr}
+    .gates{grid-template-columns:repeat(2,1fr)}
+    .wk{grid-template-columns:1fr}
+    .wk>div{border-right:0;border-bottom:1px solid var(--line)}
+    .wk>div:last-child{border-bottom:0}
+    .wk-head{display:none}
+    .wk>div[data-lane]::before{content:attr(data-lane);display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin-bottom:3px}
+    .bars{grid-template-columns:130px 1fr 60px}
+    .recon .row{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="page">
+  <aside class="rail">
+    <div class="brand"><span class="mark">R</span><div><b>Rexy 上所路線圖</b><small>Listing playbook · 2026-09-03</small></div></div>
+    <nav id="nav">
+      <a href="#q1"><span class="q">Q1</span><span>上所時點：10 / 11 / 12 月，及 Binance Perp 路徑</span></a>
+      <a href="#q2"><span class="q">Q2</span><span>Marketing、Partnership、Growth、Product 計劃</span></a>
+      <a href="#q3"><span class="q">Q3</span><span>上所需要的流動性（以目前條款）</span></a>
+      <a href="#q4"><span class="q">Q4</span><span>最好與最壞情境</span></a>
+    </nav>
+    <div class="meta">
+      <b>資料來源</b><br>Tokenomics 定案規格 v4-A（2026-08-27）<br>TGE Budget &amp; Finance Projection v2（Jeff）<br>GTM Control Room（8 週 MKT 計劃）<br>W0–W9 執行節奏
+    </div>
+  </aside>
+
+  <main>
+    <header class="head">
+      <span class="eyebrow">Rexy · TGE &amp; Binance Perp · 內部策略文件</span>
+      <h1>11 月頭 TGE，一週後上 Binance Perps。10 月只在 gate 全綠時做，12 月是後備。</h1>
+      <p class="lede">四個問題，四個答案。每一節先講結論，再放推導與數字。所有金額以 Jeff 的預算表為準，代幣數字以 v4-A 定案規格為準；有假設的地方會明確標出。</p>
+      <div class="strip">
+        <div><small>TGE 基準窗口</small><strong>W8</strong><span>10/27 – 11/2 · Alpha + Gate + MEXC 同日</span></div>
+        <div><small>BN Perps 目標</small><strong>W9</strong><span>11/3 – 11/9 · TGE 後 7 日內</span></div>
+        <div><small>開盤 FDV 錨點</small><strong>$133M</strong><span>流通 15% · 流通市值 $20M · 上限 $210M</span></div>
+        <div><small>現金需求峰值</small><strong>$2.9M</strong><span>TGE 當月累計低點 · 總支出 $3.1M</span></div>
+        <div><small>MKT 預算</small><strong>$450K</strong><span>8 週 · 不含 MM 庫存 / 法律 / 審計</span></div>
+      </div>
+    </header>
+
+    <!-- ══════════════ Q1 ══════════════ -->
+    <section id="q1">
+      <div class="sec-head"><div class="q">1</div><div><h2>上所時點策略：10 月、11 月還是 12 月？怎樣才上到 Binance Perp？</h2><p class="sub">三個窗口的取捨，加上 Alpha → Perps 的實際路徑</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>基準是 11 月頭（W8，10/27–11/2 TGE；W9 上 BN Perps）。</b>10 月窗口只有在 W5（TOKEN2049 當週）五個 gate 已全綠才啟動；12 月是 gate 不齊時的後備，硬性最遲 12/10，之後流動性轉薄、交易所與 MM 團隊進入假期。Perps 的路徑是「付費通道 + 開盤 7 日內做出 Perps 標準的量」，不是等 Binance 主動來。</p></div>
+
+      <h3>三個窗口的取捨<span class="k">以 W0 = 8/25 起算</span></h3>
+      <div class="tbl-wrap"><table class="cmp">
+        <thead><tr><th></th><th>10 月窗口 · W6–W7（10/13–10/26）</th><th class="base">11 月窗口 · W8（10/27–11/2）基準</th><th>12 月窗口（12/1–12/10）後備</th></tr></thead>
+        <tbody>
+          <tr><td>TGE 前真實 on-chain 數據</td><td>約 4 週（W2 campaign 起）</td><td class="hi">約 6 週</td><td>10 週以上</td></tr>
+          <tr><td>與 TOKEN2049（W5，10/12 結束）距離</td><td>1–2 週，熱度最高但來不及消化</td><td class="hi">2–3 週，熱度仍在、有時間收網</td><td>7 週以上，會議熱度已散</td></tr>
+          <tr><td>Tokenomics 定稿（W5）到上線的對接時間</td><td>約 1 週，deposit / withdrawal 對接與 listing assets 幾乎沒有緩衝</td><td class="hi">3 週（W6 對接、W7 鎖定、W8 上線）</td><td>7 週，充裕但閒置</td></tr>
+          <tr><td>KBW（W4）韓國造勢 → Upbit 需求</td><td>造勢後 2 週即上，KR 社群未沉澱</td><td class="hi">造勢後 4 週，KR-05 / KR-07 剛好跑完</td><td>造勢後 9 週，要再補一輪韓國活動（額外預算）</td></tr>
+          <tr><td>6 個月凍結期結束（m7 稀釋 6.30%）</td><td>2027-04</td><td>2027-05</td><td>2027-06</td></tr>
+          <tr><td>內部人懸崖到期（m13 稀釋峰值 8.66%）</td><td>2027-10</td><td>2027-11</td><td>2027-12</td></tr>
+          <tr><td>$250K security deposit 退回（M6）</td><td>2027-04</td><td>2027-05</td><td>2027-06</td></tr>
+          <tr><td>市場流動性 / 對手方可用度</td><td>Q4 開局，正常</td><td class="hi">正常，11 月上旬是 Q4 最穩的窗口</td><td>12 月中之後轉薄，交易所 listing 團隊與 MM 排假</td></tr>
+          <tr><td>額外燒錢</td><td>最省，但 MKT 預算來不及花完就上線</td><td class="hi">按計劃 $450K</td><td>多 4–6 週 opex，MKT 需延長約 $80–120K（假設）</td></tr>
+          <tr><td>判定</td><td><span class="chip warn"><i></i>只在 W5 gate 全綠時啟動</span></td><td><span class="chip good"><i></i>基準方案</span></td><td><span class="chip neutral"><i></i>後備，最遲 12/10</span></td></tr>
+        </tbody>
+      </table></div>
+      <p class="note"><b>10 月的真正問題不是市場，是對接。</b>Tokenomics 在 W5 才 final confirm，交易所要在那之後才能做 deposit / withdrawal 對接和 listing assets。壓到 W6–W7 上線，等於把 W6「收網」和 W7「對接鎖定」疊在同一週，出錯沒有回頭路。<b>12 月的真正問題是動能衰減和年底流動性</b>，而不是準備不足。</p>
+
+      <figure style="margin-top:18px">
+        <figcaption><b>W0–W9 節奏與三個 TGE 窗口</b><span>週一為每週起點；虛線窗口為非基準方案</span></figcaption>
+        <div id="timeline"></div>
+        <div class="legend"><span><i style="background:var(--s2)"></i>會議 / 造勢</span><span><i style="background:var(--s1)"></i>Metrics campaign（真實數據）</span><span><i style="background:var(--ink-3)"></i>交易所對接與鎖定</span><span><i class="sq" style="background:var(--accent)"></i>TGE 基準窗口</span><span><i class="sq" style="background:var(--s3)"></i>BN Perps</span></div>
+      </figure>
+
+      <h3>五個 Launch Gate：全綠才公開日期</h3>
+      <div class="gates">
+        <div class="gate"><b>Token + Legal</b><span>v4-A 定稿、[TK] 全部關閉、美國與韓國口徑審閱（EX-01 / EX-02）</span></div>
+        <div class="gate"><b>Security + Ops</b><span>Token / claim 審計 critical 與 high 全關、多簽與 timelock、客服與監控（EX-04 / EX-10）</span></div>
+        <div class="gate"><b>Venue / Offer</b><span>Alpha + Gate + MEXC 書面確認同日；CB / Upbit 明確 day-1 或後補（EX-05）</span></div>
+        <div class="gate"><b>Liquidity</b><span>MM 簽約、深度 SLA、DEX 池與指數來源就位、$250K 押金已備（EX-06 / EX-07）</span></div>
+        <div class="gate"><b>Metrics</b><span>DAU ≥ 60K、MAU ≥ 180K 持續 4 週；跌破即下調 FDV 與流通（v4-A 觸發條件）</span></div>
+      </div>
+
+      <h3>Binance Perp 的三條路徑<span class="k">目標：TGE 後 7 日內</span></h3>
+      <div class="cards">
+        <div class="card base"><div class="t">路徑 A · 基準</div><h4>Alpha 開盤，7 日內轉 Perps</h4><p>W8 上 Alpha + Gate + MEXC，開盤即由 MM 做量對準 Perps 標準；W9 提交 Perps。這是 Jeff 通道條款設計的節奏。</p><ul><li>TGE 前 48h 交 $250K security deposit</li><li>Perps 通道押金 $250K + 餘款 $300K</li><li>$1.5M buyback 作為 Perps 條件</li><li>listing token 3–4% 供給（35M @ 3.5%）</li></ul></div>
+        <div class="card"><div class="t">路徑 B · 上行選項</div><h4>Alpha + Futures 同日公告</h4><p>2025–26 年多個 Alpha 項目是 Alpha 與 Futures 同日上線。要在 W6–W7 談定，條件是 MM 深度承諾與指數來源在 TGE 當日已就位。</p><ul><li>好處：省掉 7 日空窗，開盤即有 OI</li><li>代價：Perps 相關現金（$2.05M）全部提前到 TGE 前</li><li>W7「所有 parties 對齊」時決定</li></ul></div>
+        <div class="card"><div class="t">路徑 C · 後補</div><h4>先做 spot 需求，再回頭談 Perps</h4><p>若 W9 未獲 Perps，維持 Alpha / Gate / MEXC 深度，用 Upbit 與 Coinbase 的 spot 需求和 Base 上的 DEX 量作為第二次提交的證據。</p><ul><li>Perps 通道押金與餘款按條款退回（$500K）</li><li>$1.5M buyback 必須分段，見 Q3</li><li>時限：TGE 後 30 日內第二次提交</li></ul></div>
+      </div>
+
+      <h3>Perps 標準：開盤前就要準備好的證據</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Binance Perps 端看的東西</th><th>Rexy 要準備的</th><th>負責 / 任務</th><th>狀態</th></tr></thead>
+        <tbody>
+          <tr><td>Spot 成交量與深度（多個場所）</td><td>Alpha + Gate + MEXC 同日；MM 深度 SLA ±2% 內；Base 上 DEX 池鎖倉 TVL ~$1M ≥ 90 天（Alpha 條款）</td><td>Listing + MM · EX-06 / EX-07</td><td><span class="chip warn"><i></i>MM RFP W3</span></td></tr>
+          <tr><td>價格指數穩定（≥ 3 個來源）</td><td>三個 CEX 加一個 DEX 池；避免單一場所佔指數過重</td><td>MM / data providers · EX-07</td><td><span class="chip warn"><i></i>W4 定案</span></td></tr>
+          <tr><td>流通供給可驗證、無隱藏籌碼</td><td>v4-A 的 15pp TGE 解鎖逐桶寫死、鏈上鎖倉合約公開、內部人 TGE 0pp</td><td>Token / Legal · EX-01 / EX-09</td><td><span class="chip good"><i></i>規格已定</span></td></tr>
+          <tr><td>真實用戶與需求</td><td>440K 註冊 / 80K DAU / 230K MAU；points campaign 的鏈上數據；KR 社群密度</td><td>Growth + Korea · PG-02 / KR-09</td><td><span class="chip warn"><i></i>W2 起累積</span></td></tr>
+          <tr><td>持幣分散度</td><td>空投 15%、TGE 解 7pp（佔開盤流通 46.7%），比 v1 高三倍</td><td>Token · EX-09</td><td><span class="chip good"><i></i>v4-A 已含</span></td></tr>
+          <tr><td>安全與合規</td><td>審計報告、權限矩陣、美韓法律口徑</td><td>Security / Legal · EX-02 / EX-04</td><td><span class="chip warn"><i></i>W3 完成</span></td></tr>
+          <tr><td>Perps readiness dossier</td><td>把以上打包成一份每週更新的 dossier，W5 起隨通道溝通提交</td><td>Internal / MM · EX-08</td><td><span class="chip neutral"><i></i>W5</span></td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">左欄是市場上普遍觀察到的評估項目，不是 Binance 的官方標準。通道條款裡的具體「Perps 標準」（成交量門檻、天數）由 Jeff 向對口確認後補上。</p>
+    </section>
+
+    <!-- ══════════════ Q2 ══════════════ -->
+    <section id="q2">
+      <div class="sec-head"><div class="q">2</div><div><h2>Marketing、Partnership、Growth、Product：怎樣把上所條件做出來</h2><p class="sub">W0–W9 逐週、四條線並行，對應 GTM Control Room 的任務編號</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>8 週把市場做出來，TGE 由 gate 觸發。</b>Marketing 負責全球聲量和韓國密度，Partnership 負責把合作方放進產品（不是換 logo），Growth 負責用 points campaign 產生真實 on-chain 數據，Product 負責每個 headline 背後都有可用功能。四條線在 W7 收斂到同一個 launch pack。</p></div>
+
+      <h3>五個可量化目標<span class="k">Week 1 baseline 後校準</span></h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>目標</th><th>Planning target</th><th>核心指標</th><th>Owner</th></tr></thead>
+        <tbody>
+          <tr><td>O1 全球 Mindshare</td><td>進入 upcoming TGE Top 20；60+ 有效 creator</td><td>7D SOV · Qualified creators · Organic ratio</td><td>Global MKT</td></tr>
+          <tr><td>O2 韓國市場密度</td><td>25 個核心渠道 / KOL；8+ 小型活動；2 個旗艦節點</td><td>Korea WAU · Event conversion · Local SOV</td><td>Korea Lead</td></tr>
+          <tr><td>O3 產品增長</td><td>活躍用戶 30% 完成 2+ Proof；D7 ≥ 25%</td><td>2+ Proof users · D7 · Share rate</td><td>Product + Growth</td></tr>
+          <tr><td>O4 合作方網絡</td><td>12 個 activated partners；6 個聯合 campaign；3 個 funded offers</td><td>Activated partners · Partner users · Funded actions</td><td>Partnerships</td></tr>
+          <tr><td>O5 Market Readiness</td><td>可信 spot 路徑；MM / 深度方案；交易所 data room 完整</td><td>Venue status · Depth · Circulation</td><td>Listing + Token</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>逐週計劃<span class="k">W0 8/25 → W9 11/9</span></h3>
+      <div class="wk-head"><div></div><div>Marketing / Community</div><div>Partnership / BD</div><div>Growth / Product</div><div>Exchange / Token / Finance</div></div>
+      <div class="weeks">
+        <div class="wk"><div class="w"><b>W0 · 8/25–9/7</b><strong>前置</strong><em>進行中</em></div>
+          <div data-lane="Marketing"><ul><li>敲定整體節奏 + TGE 目標日（W8）</li><li>KBW / TOKEN2049 場地與 side event booking</li><li>Messaging house 凍結 <span class="id">BG-01</span></li></ul></div>
+          <div data-lane="Partnership"><ul><li>Partner proposition deck <span class="id">PA-01</span></li><li>30 家 partner pipeline 分層 <span class="id">PA-02</span></li></ul></div>
+          <div data-lane="Growth"><ul><li>Genesis Sealing Season PRD <span class="id">PG-01</span></li><li>增長事件埋點定義 <span class="id">PG-02</span></li></ul></div>
+          <div data-lane="Exchange"><ul><li>Tokenomics draft 鎖定：1B 總量、流通 15%、分配 <span class="id">EX-01</span></li><li>渠道對接 Binance、Coinbase；Upbit 表格定稿</li></ul></div></div>
+        <div class="wk"><div class="w"><b>W1 · 9/8–9/14</b><strong>定調</strong></div>
+          <div data-lane="Marketing"><ul><li>全球 launch kit、editorial calendar <span class="id">BG-02 / 03</span></li><li>Mindshare baseline <span class="id">BG-04</span></li><li>韓語 messaging、KR 渠道 map <span class="id">KR-02 / 03</span></li></ul></div>
+          <div data-lane="Partnership"><ul><li>拉合作大 brand（rebrand anchor）</li><li>Investor 開談：Regis + Rexy 兩條線</li><li>確認 KBW 活動細節</li></ul></div>
+          <div data-lane="Growth"><ul><li>Ambassador / creator program 重做 <span class="id">CC-01</span></li><li>Korea lead 與代理邊界 <span class="id">KR-01</span></li></ul></div>
+          <div data-lane="Exchange"><ul><li>公共語言法律清理（buyback / value 表述） <span class="id">EX-02</span></li></ul></div></div>
+        <div class="wk"><div class="w"><b>W2 · 9/15–9/21</b><strong>渠道啟動</strong></div>
+          <div data-lane="Marketing"><ul><li>第一批 anchor KOL 簽約（10–15 位） <span class="id">BG-05</span></li><li>韓語 newsroom、KR KOL 簽約 <span class="id">KR-04 / 05</span></li><li>確認 TOKEN2049 活動細節</li></ul></div>
+          <div data-lane="Partnership"><ul><li>第一輪 outreach：Top 15 會談 <span class="id">PA-03</span></li><li>簽 2–3 家 rebrand anchor partners <span class="id">PA-04</span></li></ul></div>
+          <div data-lane="Growth"><ul><li><b>Metrics 開跑</b>：points campaign / quests 做真實 on-chain 數據</li><li>首次 Proof onboarding 優化 <span class="id">PG-03</span></li></ul></div>
+          <div data-lane="Exchange"><ul><li>Upbit / Bithumb / Coinbase data room <span class="id">EX-03</span></li><li>交易所正式溝通，單一 owner <span class="id">EX-05</span></li></ul></div></div>
+        <div class="wk"><div class="w"><b>W3 · 9/22–9/28</b><strong>生態 + 社區</strong></div>
+          <div data-lane="Marketing"><ul><li>AMA 系列</li><li>中腰部 creator cohort 45+ <span class="id">BG-06</span></li><li>Yapping scoring pilot <span class="id">CC-04</span></li></ul></div>
+          <div data-lane="Partnership"><ul><li>擼 Base + KR 圈；拿 Arbitrum 支持</li><li>關注 ARC 生態與 Robinhood</li><li>Proof / data partners、distribution partners <span class="id">PA-05 / 06</span></li></ul></div>
+          <div data-lane="Growth"><ul><li>可分享 Proof Card 上線 <span class="id">PG-04</span></li><li>Partner campaign template <span class="id">PG-05</span></li></ul></div>
+          <div data-lane="Exchange"><ul><li>安全審計與權限矩陣 <span class="id">EX-04</span></li><li>MM RFP，2+ 報價比較 <span class="id">EX-06</span></li></ul></div></div>
+        <div class="wk"><div class="w"><b>W4 · 9/29–10/5</b><strong>KBW Seoul</strong></div>
+          <div data-lane="Marketing"><ul><li>KR 市場造勢：weekly offline series 開跑 <span class="id">KR-06</span></li><li>Squad / creator season 啟動 <span class="id">CC-05</span></li></ul></div>
+          <div data-lane="Partnership"><ul><li>大 partner F2F</li><li>Funded offer partners、KR co-host <span class="id">PA-07 / 08</span></li></ul></div>
+          <div data-lane="Growth"><ul><li>Squad leaderboard v2 <span class="id">PG-06</span></li><li>產品韓語本地化 <span class="id">PG-07</span></li></ul></div>
+          <div data-lane="Exchange"><ul><li>小所選定兩間（Gate + MEXC）</li><li>MM F2F，定深度 SLA 與庫存</li><li>流動性與價格指數方案 <span class="id">EX-07</span></li></ul></div></div>
+        <div class="wk"><div class="w"><b>W5 · 10/6–10/12</b><strong>TOKEN2049 SG</strong></div>
+          <div data-lane="Marketing"><ul><li>Earned media / research placement <span class="id">BG-07</span></li><li>Metrics 最後衝刺（真數）</li></ul></div>
+          <div data-lane="Partnership"><ul><li>Joint campaigns 進行中（目標 6 個） <span class="id">PA-09</span></li></ul></div>
+          <div data-lane="Growth"><ul><li>3 個 partner-backed Proof 上線 <span class="id">PG-08</span></li><li>Anti-Sybil 與 scoring review <span class="id">PG-09</span></li></ul></div>
+          <div data-lane="Exchange"><ul><li><b>Tokenomics final confirm</b>（W0 draft 收尾）</li><li>Binance Perp readiness dossier <span class="id">EX-08</span></li><li><b>Gate 檢查點：決定 10 月或 11 月</b></li></ul></div></div>
+        <div class="wk"><div class="w"><b>W6 · 10/13–10/19</b><strong>收網</strong></div>
+          <div data-lane="Marketing"><ul><li>大 partner 合作 announcement</li><li>韓國旗艦活動 <span class="id">KR-07</span></li></ul></div>
+          <div data-lane="Partnership"><ul><li>評估新一輪 fundraising round</li></ul></div>
+          <div data-lane="Growth"><ul><li>Eligibility / claim UX 內部完成，不公開 <span class="id">PG-10</span></li></ul></div>
+          <div data-lane="Exchange"><ul><li>上所最後階段：deposit / withdrawal 對接、listing assets</li><li>空投模型與反女巫審計 <span class="id">EX-09</span></li></ul></div></div>
+        <div class="wk"><div class="w"><b>W7 · 10/20–10/26</b><strong>對接鎖定</strong></div>
+          <div data-lane="Marketing"><ul><li>Hype 推到頂：倒數內容、KOL 第二波</li><li>TGE 韓國節點就位 <span class="id">KR-08</span></li></ul></div>
+          <div data-lane="Partnership"><ul><li>所有 parties 對齊：MM、exchange、partners</li><li>決定路徑 A 或 B（Alpha + Futures 同日）</li></ul></div>
+          <div data-lane="Growth"><ul><li>Airdrop 機制 + claim infra 最後 check</li></ul></div>
+          <div data-lane="Exchange"><ul><li>端到端 launch dry run <span class="id">EX-10</span></li><li>現金到位：$2.9M 峰值需求 + MKT 尾款</li></ul></div></div>
+        <div class="wk tge"><div class="w"><b>W8 · 10/27–11/2</b><strong>TGE</strong><em>基準窗口</em></div>
+          <div data-lane="Marketing"><ul><li>公布空投、claim 與 TGE window <span class="id">EX-12</span></li><li>KR 同步節點</li></ul></div>
+          <div data-lane="Partnership"><ul><li>Partner 同步發布，funded offers 開跑</li></ul></div>
+          <div data-lane="Growth"><ul><li>Claim 開放；空投自動質押 30 天</li></ul></div>
+          <div data-lane="Exchange"><ul><li>Go / No-go 五方簽字 <span class="id">EX-11</span></li><li>TGE 前 48h 交 $250K security deposit</li><li><b>BN Alpha + Gate + MEXC 同日上</b></li><li>上線即做量，對準 Perps 標準</li></ul></div></div>
+        <div class="wk tge"><div class="w"><b>W9 · 11/3–11/9</b><strong>BN Perps</strong></div>
+          <div data-lane="Marketing"><ul><li>視乎 CB / Upbit 是 day-1 還是後補，調整 announce 次序</li></ul></div>
+          <div data-lane="Partnership"><ul><li>Upbit marketing token 20M 交付（M1）</li></ul></div>
+          <div data-lane="Growth"><ul><li>第一週留存與 Sybil 報告</li></ul></div>
+          <div data-lane="Exchange"><ul><li><b>上 BN Perps</b></li><li>Coinbase channel $200K（M1）</li><li>$1.5M buyback 按 Perps 確認分段執行</li></ul></div></div>
+      </div>
+
+      <h3>MKT 預算 $450K 的去向<span class="k">8 週 · 不含 MM 庫存、listing、法律、審計、token incentives</span></h3>
+      <div class="two">
+        <div class="card"><div class="bars" id="budgetBars"></div><p class="note">雙週複盤：未達轉化門檻的渠道，48 小時內暫停或轉移預算。線下與韓國合計 $210K，是最大的兩筆，也是 Upbit 需求敘事的基礎。</p></div>
+        <div class="card"><div class="t">執行原則</div>
+          <ul class="tight">
+            <li><b>Proof 是核心行為。</b>Trading 是高價值場景，yapping 是分發，quest 只做 onboarding。</li>
+            <li><b>合作方必須進入產品。</b>聯合 Proof / Badge、聯合 campaign、真實 offer，而不是互換 logo。</li>
+            <li><b>每個 headline 對應可用功能。</b>Proof Card（W3）、partner template（W3）、Squad v2（W4）、韓語版（W4）。</li>
+            <li><b>韓國按長期市場運營。</b>內容、社區、KOL、線下並行，不押一場旗艦活動。</li>
+            <li><b>內部準備，條件觸發。</b>空投比例、資格、claim、交易平台只在 gate 後公開。</li>
+            <li><b>NFT 是 Genesis 身份。</b>有限 multiplier，不承諾 floor，不線性放大空投。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ Q3 ══════════════ -->
+    <section id="q3">
+      <div class="sec-head"><div class="q">3</div><div><h2>以目前條款，上所需要多少流動性？</h2><p class="sub">現金、代幣、MM 庫存三筆分開算，並與 v4-A 的 TGE 解鎖對帳</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>現金：TGE 前要有 $4.0M 在手</b>（$2.9M 累計峰值 + $450K MKT + 法律審計與緩衝）。<b>代幣：已承諾 63M（6.3% 供給），加上 MM 與 DEX 池約需 80–85M</b>，超出 v4-A 為交易所與流動性預留的 TGE 解鎖 60M。這個缺口必須在 W5 定稿前決定怎樣補，否則「前 6 個月流通零增長」的敘事會被 Upbit 那 20M 打破。</p></div>
+
+      <h3>現金支出<span class="k">Jeff 預算表 · 合計 $3.1M</span></h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>項目</th><th>時點</th><th class="n">金額</th><th>性質</th><th>備註</th></tr></thead>
+        <tbody>
+          <tr><td>Binance Perps channel deposit</td><td>Pre-TGE</td><td class="n">$250,000</td><td><span class="chip good"><i></i>Perps 失敗可退</span></td><td>預算表兩處分別記 $250K 與 $200K，以 $250K 保守計；退回口徑待 Jeff 確認</td></tr>
+          <tr><td>BN security deposit（USDC）</td><td>TGE 前 48h</td><td class="n">$250,000</td><td><span class="chip good"><i></i>M6 可退</span></td><td>Alpha 條款 Option B：達到流動性要求後 6 個月退回</td></tr>
+          <tr><td>Binance Alpha LP pool 現金腿</td><td>M0</td><td class="n">$250,000</td><td><span class="chip warn"><i></i>鎖倉</span></td><td>加 5M 代幣；LP TVL ~$1M 鎖 ≥ 90 天，~$600K 鎖到 ≥ 180 天</td></tr>
+          <tr><td>BN Alpha 餘款</td><td>M0</td><td class="n">$150,000</td><td><span class="chip crit"><i></i>沉沒</span></td><td></td></tr>
+          <tr><td>BN Perps 餘款</td><td>M0</td><td class="n">$300,000</td><td><span class="chip good"><i></i>Perps 失敗可退</span></td><td></td></tr>
+          <tr><td>Buyback（Perps 條件）</td><td>M0</td><td class="n">$1,500,000</td><td><span class="chip warn"><i></i>轉為代幣庫存</span></td><td>最大單筆。以 50% 折價計可回收 $750K，但不是現金</td></tr>
+          <tr><td>Gate listing 現金腿</td><td>M0</td><td class="n">$150,000</td><td><span class="chip crit"><i></i>沉沒</span></td><td>加 3M 代幣</td></tr>
+          <tr><td>MEXC listing</td><td>M0</td><td class="n">$50,000</td><td><span class="chip crit"><i></i>沉沒</span></td><td></td></tr>
+          <tr><td>Coinbase channel</td><td>M1</td><td class="n">$200,000</td><td><span class="chip good"><i></i>失敗可退</span></td><td>時點是假設，按實際付款月調整</td></tr>
+          <tr class="sum"><td>合計現金支出</td><td></td><td class="n">$3,100,000</td><td></td><td>Pre-TGE $0.5M · M0 $2.4M · M1 $0.2M</td></tr>
+        </tbody>
+      </table></div>
+
+      <figure style="margin-top:14px">
+        <figcaption><b>現金支出按時點</b><span>單位 $M；同色為同一交易所</span></figcaption>
+        <div class="stack" id="cashStack"></div>
+        <div class="swatches"><span><i style="background:var(--s1)"></i>Binance（Alpha + Perps + 押金）</span><span><i style="background:var(--s3)"></i>Buyback</span><span><i style="background:var(--s2)"></i>Gate + MEXC</span><span><i style="background:var(--ink-3)"></i>Coinbase</span></div>
+      </figure>
+
+      <div class="cards" style="margin-top:16px">
+        <div class="card"><div class="t">TGE 前要在手的現金</div><h4 class="num" style="font-size:24px">$4.0M</h4><ul><li>累計現金低點 −$2.9M（TGE 當月）</li><li>MKT 8 週 $450K，其中約 $300K 在 TGE 前支付</li><li>法律、審計、claim 基建：預算表外，估 $150–250K（假設）</li><li>緩衝 $300K</li></ul></div>
+        <div class="card"><div class="t">其中可退回或轉庫存</div><h4 class="num" style="font-size:24px">$2.0M</h4><ul><li>Perps 失敗退回：$250K + $300K + Coinbase $200K</li><li>Security deposit M6 退回 $250K</li><li>Buyback $1.5M 轉代幣庫存（現金上視為沉沒）</li></ul></div>
+        <div class="card"><div class="t">真正沉沒的現金</div><h4 class="num" style="font-size:24px">$0.6M</h4><ul><li>Alpha 餘款 $150K、Gate $150K、MEXC $50K</li><li>Alpha LP 現金腿 $250K 在 90–180 天內鎖住，之後仍是自己的</li></ul></div>
+      </div>
+
+      <h3>代幣承諾與 v4-A 對帳<span class="k">總量 1B · TGE 流通 15% = 150M</span></h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>用途</th><th>時點</th><th class="n">代幣</th><th class="n">佔供給</th><th class="n">@ $0.05（表內佔位）</th><th class="n">@ $0.1333（v4-A 開盤）</th><th>備註</th></tr></thead>
+        <tbody>
+          <tr><td>BN listing token</td><td>M0</td><td class="n">35,000,000</td><td class="n">3.50%</td><td class="n">$1.75M</td><td class="n">$4.67M</td><td>通道口徑 3–4%，取中位；談到 3% 可省 5M</td></tr>
+          <tr><td>Binance Alpha LP pool 代幣腿</td><td>M0</td><td class="n">5,000,000</td><td class="n">0.50%</td><td class="n">$0.25M</td><td class="n">$0.67M</td><td>與 $250K 現金腿配對入池</td></tr>
+          <tr><td>Gate listing 代幣腿</td><td>M0</td><td class="n">3,000,000</td><td class="n">0.30%</td><td class="n">$0.15M</td><td class="n">$0.40M</td><td></td></tr>
+          <tr><td>Upbit marketing token</td><td>M1</td><td class="n">20,000,000</td><td class="n">2.00%</td><td class="n">$1.00M</td><td class="n">$2.67M</td><td>落在 m1–m6 凍結期內，見下方對帳</td></tr>
+          <tr class="sum"><td>已承諾合計</td><td></td><td class="n">63,000,000</td><td class="n">6.30%</td><td class="n">$3.15M</td><td class="n">$8.40M</td><td>預算表以 $0.05 佔位，實際應改為 $0.1333</td></tr>
+          <tr><td>MM 借券庫存（假設）</td><td>M0</td><td class="n">10–15M</td><td class="n">1.0–1.5%</td><td class="n">—</td><td class="n">$1.3–2.0M</td><td>EX-06 RFP 後定；通常附 call option、到期歸還</td></tr>
+          <tr><td>Base 上 DEX 池（假設）</td><td>M0</td><td class="n">5–10M</td><td class="n">0.5–1.0%</td><td class="n">—</td><td class="n">$0.7–1.3M + 等值穩定幣</td><td>指數第四來源；Aztec 做法是部署入池、鎖在池內</td></tr>
+        </tbody>
+      </table></div>
+
+      <figure style="margin-top:14px">
+        <figcaption><b>TGE 解鎖可用量 vs 已承諾用量</b><span>單位 M 代幣；紅線為 v4-A 對應桶的 TGE 解鎖上限</span></figcaption>
+        <div class="recon" id="recon"></div>
+        <div class="swatches"><span><i style="background:var(--s1)"></i>已承諾（預算表）</span><span><i style="background:var(--s2)"></i>MM + DEX（假設中值）</span><span><i style="background:var(--ink-3)"></i>v4-A TGE 解鎖：流動性 4pp + 交易所行銷 2pp</span><span><i style="background:var(--line-2)"></i>生態 TGE 解鎖 2pp（可挪用）</span></div>
+      </figure>
+
+      <div class="card" style="margin-top:14px;border-color:var(--warn)">
+        <div class="t" style="color:var(--warn)">三個要在 W5 定稿前拍板的缺口</div>
+        <ul class="tight">
+          <li><b>交易所代幣超出 TGE 解鎖。</b>v4-A 為流動性桶（4pp = 40M）與交易所行銷桶（TGE 解 2pp = 20M）合共預留 60M；預算表的 M0 承諾已是 43M，加 MM 借券與 DEX 池就到 65–70M。選項：把交易所行銷桶的 TGE 解鎖從 2pp 提到 4pp（桶本身 5% 不變），或把 BN listing token 談到 3% 並分期。</li>
+          <li><b>Upbit 20M 落在凍結期。</b>「m1–m6 零釋放」是 v4-A 對外最好講的一句話。Upbit 的 20M 若在 M1 從鎖倉桶放出，這句話就不成立。解法：從 TGE 已解鎖的 60M 內預留，或改為 TGE 當日交付並在文件裡寫明用途。</li>
+          <li><b>Buyback $1.5M 要分段。</b>它是 Perps 條件，卻在 Perps 確認前全額支付；下行情境裡是最大的損失項。建議 M0 執行 $500K 作誠意，餘下 $1.0M 綁 Perps 上線公告。</li>
+        </ul>
+      </div>
+      <p class="note"><b>為什麼要用 $0.1333 重算。</b>預算表的代幣價格是 $0.05 佔位，v4-A 開盤價是 $0.1333。同樣 63M 代幣，帳面成本從 $3.15M 變成 $8.4M，超過所有現金支出的總和。談 listing token 比例的時候，每 0.5% 就是 $667K。</p>
+    </section>
+
+    <!-- ══════════════ Q4 ══════════════ -->
+    <section id="q4">
+      <div class="sec-head"><div class="q">4</div><div><h2>最好與最壞情境</h2><p class="sub">同一套支出，三種收入與上所結果；M6 現金位置為判斷基準</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>最好：Alpha + Perps 同日或 7 日內，Upbit 跟上，M6 現金 +$17.2M。最壞：Coinbase 與 Perps 都失敗，收入只有 $1M，M6 現金 −$1.15M，且全年都回不到正數。</b>兩者之間差 $18.3M，其中 $19M 來自收入情境，支出幾乎不變。所以風控的重點不是省支出，是把 $1.5M buyback 和 $1.0M 通道費綁在上所確認上，以及守住 DAU 60K 的觸發線。</p></div>
+
+      <div class="scen">
+        <div class="card best"><div class="top"><div class="t">最好情境</div><h4>Alpha + Perps 同週，Upbit day-1 或 M1</h4><div class="big num">+$17.2M<small>M6 現金位置</small></div></div>
+          <dl><dt>收入</dt><dd><b>$40M gross / 3–6 個月</b>，50% 分潤 → $20M 淨（Jeff 情境）</dd>
+          <dt>上所</dt><dd>W8 Alpha + Gate + MEXC；W9 Perps；Upbit、Coinbase 陸續</dd>
+          <dt>代幣</dt><dd>開盤 FDV $133M；市場好時上緣 $210M（3× 上輪）；空投自動質押抽走開盤兩週賣壓</dd>
+          <dt>現金低點</dt><dd>−$2.9M（M0），M2 轉正</dd>
+          <dt>條件</dt><dd>五個 gate W7 全綠；DAU 維持 80K 以上；MM 深度達標讓 $250K 押金 M6 退回</dd></dl></div>
+        <div class="card mid"><div class="top"><div class="t">基準情境</div><h4>Perps W9–W10 上線，收入打五折</h4><div class="big num">+$7.2M<small>M6 現金位置</small></div></div>
+          <dl><dt>收入</dt><dd>預算表 0.5× 敏感度：<b>$10M 淨</b></dd>
+          <dt>上所</dt><dd>Alpha 如期；Perps 因量不足延 1–2 週；Upbit 後補；Coinbase 不確定</dd>
+          <dt>代幣</dt><dd>FDV 守在 $133M 上下；m7（2027-05）第一次真正的解鎖考驗，稀釋 6.30%</dd>
+          <dt>現金低點</dt><dd>−$2.9M（M0），M3 轉正</dd>
+          <dt>條件</dt><dd>Buyback 分段執行；Perps 第二次提交在 TGE 後 30 日內</dd></dl></div>
+        <div class="card worst"><div class="top"><div class="t">最壞情境</div><h4>Coinbase 與 BN Perps 都失敗</h4><div class="big num">−$1.15M<small>M6 現金位置</small></div></div>
+          <dl><dt>收入</dt><dd><b>$1M</b>（Jeff 下行情境）</dd>
+          <dt>上所</dt><dd>只剩 Alpha + Gate + MEXC 的 spot；退款 $700K 在 M2、$250K 在 M6</dd>
+          <dt>代幣</dt><dd>DAU 跌破 60K 觸發：下調 FDV 與流通；m7 解鎖前 30 天賣壓提前出現</dd>
+          <dt>現金低點</dt><dd>−$3.0M（M1），全年不回正</dd>
+          <dt>損失結構</dt><dd>$1.5M buyback 是唯一可以救回的大項：綁在 Perps 確認上，損失少 $1.5M</dd></dl></div>
+      </div>
+
+      <figure style="margin-top:16px">
+        <figcaption><b>累計現金位置：三個情境</b><span>單位 $M · Pre-TGE 到 M6 · 支出相同，收入不同</span></figcaption>
+        <div id="cashChart"></div>
+        <div class="legend"><span><i style="background:var(--s1)"></i>最好（$20M 淨收入）</span><span><i style="background:var(--s2)"></i>基準（$10M 淨收入）</span><span><i style="background:var(--s3)"></i>最壞（$1M，CB + Perps 失敗）</span></div>
+      </figure>
+
+      <h3>把最壞情境變得可承受的四個動作</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>動作</th><th>何時決定</th><th class="n">最壞情境改善</th><th>代價</th></tr></thead>
+        <tbody>
+          <tr><td>Buyback $1.5M 分段：M0 $500K，餘下綁 Perps 公告</td><td>W7 與通道對口談定</td><td class="n">+$1.0M</td><td>Perps 端可能要求更高的其他承諾；需書面確認分段可接受</td></tr>
+          <tr><td>Perps 押金與餘款、Coinbase channel 的退款條款寫入合約</td><td>W6 之前</td><td class="n">+$0.75M（確保退回）</td><td>無；只是把預算表的假設變成合約條款</td></tr>
+          <tr><td>DAU 60K / MAU 180K 觸發線：跌破即下調 FDV 與流通，不硬上</td><td>W5 gate 檢查點起每週看</td><td class="n">避免開盤即破發</td><td>敘事要重講；但比 FDV $133M 開盤後跌 50% 便宜得多</td></tr>
+          <tr><td>12 月後備窗口預先訂好（場地、MM、交易所檔期）</td><td>W5</td><td class="n">保住 TGE 而非取消</td><td>約 $80–120K 額外 MKT 與 4–6 週 opex（假設）</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>兩個日曆風險點，跟窗口一起看</h3>
+      <p class="prose">v4-A 的 6 個月凍結把第一年供給膨脹壓到 1.38×，但供給沒有消失，只是推到 m7；m13 內部人再疊上來。Keyrock 的統計是賣壓在解鎖前約 30 天出現。以 11 月 TGE 計，<b>2027 年 4 月和 10 月</b>就是要提前準備回購與敘事的兩個月份；選 10 月或 12 月上，只是把這兩個月份各前後移一個月，風險本身不變。</p>
+    </section>
+
+    <footer class="foot">
+      <b>口徑說明。</b>代幣分配、解鎖、FDV 取自 Tokenomics 定案規格 v4-A（資料截至 2026-08-27）；現金與代幣支出、收入情境取自 TGE Budget &amp; Finance Projection v2；MKT 預算、目標與任務編號取自 GTM Control Room；週節奏取自 W0–W9 計劃。標明「假設」的數字（MM 借券、DEX 池、法律審計、12 月延長成本）不在任何來源內，是為了讓合計可算而填的估值，須在 W3 MM RFP 與 W5 定稿時替換。本頁為內部策略文件，不構成投資建議。
+    </footer>
+  </main>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s);
+  const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const tip=$("#tip");
+  function showTip(e,html){tip.innerHTML=html;tip.classList.add("on");moveTip(e)}
+  function moveTip(e){const r=tip.getBoundingClientRect();let x=e.clientX+14,y=e.clientY+14;if(x+r.width>innerWidth-8)x=e.clientX-r.width-14;if(y+r.height>innerHeight-8)y=e.clientY-r.height-14;tip.style.left=x+"px";tip.style.top=y+"px"}
+  function hideTip(){tip.classList.remove("on")}
+
+  /* ── timeline (Q1) ── */
+  (function(){
+    const weeks=[["W0","8/25"],["W1","9/8"],["W2","9/15"],["W3","9/22"],["W4","9/29"],["W5","10/6"],["W6","10/13"],["W7","10/20"],["W8","10/27"],["W9","11/3"],["","11/10"],["","11/17"],["","11/24"],["","12/1"],["","12/8"],["","12/15"]];
+    const W=880,L=70,R=16,T=18,rowH=30,rows=5,H=T+rowH*rows+40;
+    const n=weeks.length,cw=(W-L-R)/n;
+    const x=i=>L+i*cw;
+    const lanes=["會議 / 造勢","Metrics campaign","對接與鎖定","TGE 窗口","BN Perps"];
+    let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="W0 到 12 月中的節奏與三個 TGE 窗口">`;
+    for(let i=0;i<=n;i++){s+=`<line class="grid" x1="${x(i)}" x2="${x(i)}" y1="${T}" y2="${T+rowH*rows}"/>`}
+    weeks.forEach((w,i)=>{if(i%2===0||w[0]==="W8"||w[0]==="W9"){s+=`<text x="${x(i)+3}" y="${T+rowH*rows+16}" font-size="10">${w[1]}</text>`}if(w[0])s+=`<text x="${x(i)+3}" y="${T-6}" font-size="10">${w[0]}</text>`});
+    lanes.forEach((l,r)=>{s+=`<text class="lbl" x="${L-8}" y="${T+rowH*r+rowH/2+4}" text-anchor="end">${l}</text>`;s+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${T+rowH*(r+1)}" y2="${T+rowH*(r+1)}"/>`});
+    const bar=(r,a,b,fill,label,dash,txtFill)=>{const y=T+rowH*r+6,h=rowH-12;s+=`<rect x="${x(a)+2}" y="${y}" width="${cw*(b-a)-4}" height="${h}" rx="4" fill="${fill}" ${dash?`fill-opacity="0.18" stroke="${fill}" stroke-dasharray="4 3"`:""}/>`;if(label)s+=`<text x="${x(a)+8}" y="${y+h/2+4}" font-size="10.5" fill="${txtFill||"#fff"}" font-weight="600">${label}</text>`};
+    const s1=css("--s1"),s2=css("--s2"),s3=css("--s3"),ac=css("--accent"),ink3=css("--ink-3"),ink=css("--ink");
+    bar(0,4,5,s2,"KBW");bar(0,5,6,s2,"T2049");s+=`<text class="lbl" x="${x(6)+6}" y="${T+rowH/2+4}" font-size="10.5">KBW Seoul · TOKEN2049 SG</text>`;
+    bar(1,2,9,s1,"points campaign / quests → 真實 on-chain 數據");
+    bar(2,6,8,ink3,"對接 · dry run");
+    bar(3,6,8,ac,"10 月 · gate 全綠",true,ink);
+    bar(3,8,9,ac,"11 月");s+=`<text class="lbl" x="${x(9)+6}" y="${T+rowH*3+rowH/2+4}" font-size="10.5" font-weight="600">基準</text>`;
+    bar(3,13,15,ac,"12 月 後備",true,ink);s+=`<text class="lbl" x="${x(13)-6}" y="${T+rowH*3+rowH/2+4}" text-anchor="end" font-size="10.5">最遲 12/10</text>`;
+    bar(4,9,10,s3,"Perps");
+    s+=`<text class="lbl" x="${x(9)+cw+6}" y="${T+rowH*4+rowH/2+4}" font-size="10.5">路徑 C：TGE 後 30 日內第二次提交</text>`;
+    s+="</svg>";
+    $("#timeline").innerHTML=s;
+  })();
+
+  /* ── budget bars (Q2) ── */
+  (function(){
+    const b=[["Offline events",130],["Global KOL / creators",95],["Korea KOL / community / media",80],["Partner campaigns / rewards",55],["Community / ambassadors",30],["Content / creative / PR",25],["Contingency",25],["Data / tools / measurement",10]];
+    const max=130;
+    $("#budgetBars").innerHTML=b.map(([n,v])=>`<div>${n}</div><div class="track"><div class="fill" style="width:${v/max*100}%"></div></div><div class="v">$${v}K</div>`).join("")+`<div style="font-weight:600;color:var(--ink)">合計</div><div></div><div class="v" style="color:var(--ink);font-weight:600">$450K</div>`;
+  })();
+
+  /* ── cash stack (Q3) ── */
+  (function(){
+    const cols={bn:css("--s1"),bb:css("--s3"),small:css("--s2"),cb:css("--ink-3")};
+    const rows=[
+      ["Pre-TGE",[["Perps deposit",0.25,"bn"],["Security deposit",0.25,"bn"]],0.5],
+      ["TGE (M0)",[["Alpha LP",0.25,"bn"],["Alpha fee",0.15,"bn"],["Perps fee",0.3,"bn"],["Buyback",1.5,"bb"],["Gate",0.15,"small"],["MEXC",0.05,"small"]],2.4],
+      ["M1",[["Coinbase",0.2,"cb"]],0.2]
+    ];
+    const max=2.4;
+    $("#cashStack").innerHTML=rows.map(([lab,segs,tot])=>`<div style="color:var(--ink);font-weight:500">${lab}</div><div class="seg-row" style="width:${tot/max*100}%">${segs.map(([n,v,c])=>`<div class="seg" style="flex:${v} 0 0;background:${cols[c]}" data-n="${n}" data-v="${v}">${v>=1?n+" $"+v.toFixed(1)+"M":""}</div>`).join("")}</div><div class="v">$${tot.toFixed(1)}M</div>`).join("");
+    document.querySelectorAll("#cashStack .seg").forEach(el=>{el.addEventListener("mousemove",e=>showTip(e,`${el.dataset.n}<br>$${(+el.dataset.v).toFixed(2)}M`));el.addEventListener("mouseleave",hideTip)});
+  })();
+
+  /* ── token reconciliation (Q3) ── */
+  (function(){
+    const max=90; // M tokens across the bar
+    const rows=[
+      {first:true,lab:"TGE 當日 (M0)",sub:"BN 35 + Alpha LP 5 + Gate 3 + MM 12.5 + DEX 7.5",segs:[["BN listing",35,"--s1"],["Alpha LP",5,"--s1"],["Gate",3,"--s1"],["MM 借券",12.5,"--s2"],["DEX 池",7.5,"--s2"]],cap:60,cap2:80},
+      {lab:"含 Upbit (M1)",sub:"再加 Upbit 20M，落在凍結期",segs:[["M0 合計",63,"--s1"],["Upbit",20,"--s1"]],cap:60,cap2:80}
+    ];
+    $("#recon").innerHTML=rows.map(r=>{let left=0;const segs=r.segs.map(([n,v,c])=>{const s=`<div class="seg" style="left:${left/max*100}%;width:${v/max*100}%;background:var(${c})" data-n="${n}" data-v="${v}">${v>=8?n+" "+v:""}</div>`;left+=v;return s}).join("");return `<div class="row"><div class="lab"><b>${r.lab}</b>${r.sub}</div><div class="bar">${segs}<div class="cap" style="left:${r.cap/max*100}%">${r.first?"<span>解鎖上限 60M</span>":""}</div><div class="cap" style="left:${r.cap2/max*100}%;background:var(--line-2)">${r.first?'<span class="r" style="color:var(--ink-3)">+生態 2pp = 80M</span>':""}</div></div></div>`}).join("");
+    document.querySelectorAll("#recon .seg").forEach(el=>{el.addEventListener("mousemove",e=>showTip(e,`${el.dataset.n}<br>${el.dataset.v}M 代幣 (${(el.dataset.v/10).toFixed(2)}% 供給)`));el.addEventListener("mouseleave",hideTip)});
+  })();
+
+  /* ── cumulative cash chart (Q4) ── */
+  (function(){
+    const labels=["Pre-TGE","M0","M1","M2","M3","M4","M5","M6"];
+    const series=[
+      {n:"最好",c:css("--s1"),v:[-0.5,-2.9,-1.1,1.9,4.9,8.9,12.9,17.15]},
+      {n:"基準",c:css("--s2"),v:[-0.5,-2.9,-2.1,-0.6,0.9,2.9,4.9,7.15]},
+      {n:"最壞",c:css("--s3"),v:[-0.5,-2.9,-3.0,-2.15,-2.0,-1.8,-1.6,-1.15]}
+    ];
+    const W=880,H=330,L=54,R=96,T=16,B=36;
+    const yMin=-4,yMax=18;
+    const x=i=>L+i*(W-L-R)/(labels.length-1);
+    const y=v=>T+(yMax-v)/(yMax-yMin)*(H-T-B);
+    let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="三個情境的累計現金位置">`;
+    for(let t=yMin;t<=yMax;t+=4){s+=`<line class="${t===0?"zero":"grid"}" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L-8}" y="${y(t)+4}" text-anchor="end">${t>0?"+":""}${t}</text>`}
+    labels.forEach((l,i)=>{s+=`<text x="${x(i)}" y="${H-B+18}" text-anchor="middle">${l}</text>`});
+    series.forEach(sr=>{const d=sr.v.map((v,i)=>`${i?"L":"M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");s+=`<path d="${d}" fill="none" stroke="${sr.c}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;sr.v.forEach((v,i)=>{s+=`<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="${sr.c}" stroke="var(--surface)" stroke-width="2"/>`});const last=sr.v[sr.v.length-1];s+=`<text class="lbl" x="${x(labels.length-1)+10}" y="${y(last)+4}" font-weight="600">${sr.n} ${last>0?"+":""}${last.toFixed(1)}</text>`});
+    // trough annotation
+    s+=`<text class="lbl" x="${x(1)+10}" y="${y(-2.9)+14}" font-size="10.5">峰值需求 −2.9（M0）</text>`;
+    // hover columns
+    labels.forEach((l,i)=>{const cw=(W-L-R)/(labels.length-1);s+=`<rect data-i="${i}" x="${x(i)-cw/2}" y="${T}" width="${cw}" height="${H-T-B}" fill="transparent"/>`});
+    s+="</svg>";
+    const host=$("#cashChart");host.innerHTML=s;
+    host.querySelectorAll("rect[data-i]").forEach(r=>{r.addEventListener("mousemove",e=>{const i=+r.dataset.i;showTip(e,`<b>${labels[i]}</b><br>`+series.map(sr=>`${sr.n}: ${sr.v[i]>0?"+":""}$${sr.v[i].toFixed(2)}M`).join("<br>"))});r.addEventListener("mouseleave",hideTip)});
+  })();
+
+  /* ── nav highlight ── */
+  (function(){
+    const links=[...document.querySelectorAll("#nav a")];const secs=links.map(a=>document.querySelector(a.getAttribute("href")));
+    if(!("IntersectionObserver" in window))return;
+    const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){links.forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+e.target.id))}})},{rootMargin:"-20% 0px -70% 0px"});
+    secs.forEach(s=>s&&io.observe(s));
+  })();
+})();
+</script>
