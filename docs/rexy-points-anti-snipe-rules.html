@@ -1,0 +1,418 @@
+<title>Rexy Points 反狙擊規則</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#F2F5F7; --surface:#FFFFFF; --surface-2:#E9EEF2; --line:#D5DDE3; --line-2:#BCC7CF;
+    --ink:#15212C; --ink-2:#465563; --ink-3:#74838F;
+    --accent:#1B7F4E; --accent-ink:#0F5A36; --accent-tint:#DFF1E6;
+    --s1:#1B7F4E; --s2:#2F5D9E; --s3:#B5472B;
+    --good:#1B7F4E; --warn:#A8701A; --crit:#C2362B; --good-tint:#DFF1E6; --warn-tint:#FBEFD9; --crit-tint:#FAE3DF;
+    --display:"Bricolage Grotesque","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    --body:"IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --mono:"IBM Plex Mono","SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --ground:#0F1519; --surface:#161E25; --surface-2:#1E2831; --line:#2B3740; --line-2:#3B4954;
+      --ink:#E7EDF1; --ink-2:#AAB6C0; --ink-3:#7E8B96;
+      --accent:#3FB876; --accent-ink:#7ED6A3; --accent-tint:#173328;
+      --s1:#2E9A5D; --s2:#5B8AD0; --s3:#CF6B45;
+      --good:#3FB876; --warn:#D9A24A; --crit:#E0685A; --good-tint:#173328; --warn-tint:#33280F; --crit-tint:#3A1B17;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0F1519; --surface:#161E25; --surface-2:#1E2831; --line:#2B3740; --line-2:#3B4954;
+    --ink:#E7EDF1; --ink-2:#AAB6C0; --ink-3:#7E8B96;
+    --accent:#3FB876; --accent-ink:#7ED6A3; --accent-tint:#173328;
+    --s1:#2E9A5D; --s2:#5B8AD0; --s3:#CF6B45;
+    --good:#3FB876; --warn:#D9A24A; --crit:#E0685A; --good-tint:#173328; --warn-tint:#33280F; --crit-tint:#3A1B17;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  h1,h2,h3,h4{font-family:var(--display);letter-spacing:-.01em;text-wrap:balance;margin:0}
+  p{margin:0}
+  .num,.mono,td.n,th.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .page{display:grid;grid-template-columns:232px minmax(0,1fr);gap:40px;max-width:1240px;margin:0 auto;padding:36px 28px 80px}
+
+  .rail{position:sticky;top:24px;align-self:start;display:flex;flex-direction:column;gap:22px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:15px}
+  .brand b{font-family:var(--display);font-weight:700;font-size:15px}
+  .brand small{display:block;color:var(--ink-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .rail nav{display:flex;flex-direction:column;gap:2px}
+  .rail nav a{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:baseline;padding:8px 10px;border-radius:8px;text-decoration:none;color:var(--ink-2);font-size:13px;line-height:1.35}
+  .rail nav a .q{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .rail nav a:hover{background:var(--surface);color:var(--ink)}
+  .rail nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .rail nav a.on{background:var(--accent-tint);color:var(--accent-ink)}
+  .rail nav a.on .q{color:var(--accent-ink)}
+  .rail .meta{border-top:1px solid var(--line);padding-top:14px;color:var(--ink-3);font-size:11.5px;line-height:1.6}
+  .rail .meta b{color:var(--ink-2);font-weight:500}
+
+  .head{display:flex;flex-direction:column;gap:18px;padding-bottom:28px;border-bottom:1px solid var(--line);margin-bottom:38px}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink)}
+  h1{font-size:clamp(28px,3.6vw,42px);line-height:1.15;font-weight:800;max-width:26ch}
+  .lede{max-width:64ch;color:var(--ink-2);font-size:16px}
+  .strip{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+  .strip>div{padding:14px 16px;border-right:1px solid var(--line)}
+  .strip>div:last-child{border-right:0}
+  .strip small{display:block;color:var(--ink-3);font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+  .strip strong{display:block;font-family:var(--mono);font-size:19px;font-weight:600;letter-spacing:-.01em}
+  .strip span{display:block;color:var(--ink-3);font-size:11.5px;margin-top:2px}
+
+  section{margin-bottom:64px;scroll-margin-top:24px}
+  .sec-head{display:grid;grid-template-columns:56px 1fr;gap:16px;align-items:start;margin-bottom:20px}
+  .sec-head .q{font-family:var(--display);font-weight:800;font-size:40px;line-height:1;color:var(--accent);padding-top:2px}
+  .sec-head h2{font-size:26px;font-weight:700;line-height:1.2}
+  .sec-head .sub{color:var(--ink-3);font-size:13px;margin-top:4px}
+  .answer{position:relative;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:18px 22px;margin-bottom:26px}
+  .answer .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:6px}
+  .answer p{font-size:16.5px;line-height:1.6;max-width:70ch}
+  .answer p b{font-weight:600}
+  h3{font-size:17px;font-weight:700;margin:32px 0 12px}
+  h3 .k{font-family:var(--mono);font-weight:500;font-size:12px;color:var(--ink-3);margin-left:8px;letter-spacing:.04em}
+  h4{font-size:14px;font-weight:600;margin:0 0 6px}
+  .prose{max-width:70ch;color:var(--ink-2)}
+  .prose+.prose{margin-top:10px}
+  .prose b{color:var(--ink);font-weight:600}
+  .note{color:var(--ink-3);font-size:12.5px;line-height:1.55;max-width:80ch;margin-top:10px}
+  .note b{color:var(--ink-2);font-weight:500}
+  ul.tight{margin:8px 0 0;padding-left:18px;color:var(--ink-2)}
+  ul.tight li{margin:4px 0}
+  ul.tight li b{color:var(--ink);font-weight:600}
+
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{font-family:var(--body);text-align:left;font-weight:600;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);padding:11px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+  td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+  tr:last-child td{border-bottom:0}
+  td:first-child{color:var(--ink);font-weight:500}
+  td.n,th.n{text-align:right;white-space:nowrap}
+  td.hi{color:var(--ink);font-weight:600}
+  tr.sum td{background:var(--surface-2);color:var(--ink);font-weight:600}
+  td .id{font-family:var(--mono);font-size:11px;color:var(--ink-3);display:block;margin-top:2px}
+  td .why{display:block;color:var(--ink-3);font-size:12.5px;margin-top:4px}
+  .rules td:first-child{width:52px;font-family:var(--mono);font-weight:600;color:var(--accent-ink)}
+  .rules td:nth-child(2){min-width:260px}
+  .rules td:nth-child(2) b{color:var(--ink);font-weight:600;display:block}
+  .rules td.param{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+  tr.grp td{background:var(--surface-2);color:var(--ink);font-weight:700;font-family:var(--display);font-size:13.5px;letter-spacing:.01em}
+
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 7px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap;line-height:1.6}
+  .chip i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+  .chip.good{background:var(--good-tint);color:var(--good)}
+  .chip.warn{background:var(--warn-tint);color:var(--warn)}
+  .chip.crit{background:var(--crit-tint);color:var(--crit)}
+  .chip.neutral{background:var(--surface-2);color:var(--ink-2)}
+
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .card .t{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+  .card h4{font-size:15px}
+  .card p,.card li{font-size:13px;color:var(--ink-2)}
+  .card ul{margin:8px 0 0;padding-left:16px}
+  .card li{margin:3px 0}
+
+  figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px 14px}
+  figure figcaption{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
+  figure figcaption b{font-size:14px;font-weight:600}
+  figure figcaption span{color:var(--ink-3);font-size:12px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2);margin-top:10px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* worked-example paired bars */
+  .ex{display:grid;grid-template-columns:200px 1fr;gap:14px 14px;align-items:center;font-size:13px}
+  .ex .lab b{display:block;color:var(--ink);font-weight:600}
+  .ex .lab span{color:var(--ink-3);font-size:12px}
+  .ex .pair{display:grid;gap:4px}
+  .ex .row{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center}
+  .ex .track{height:14px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+  .ex .fill{height:100%;border-radius:4px}
+  .ex .fill.naive{background:var(--ink-3)}
+  .ex .fill.rule{background:var(--accent)}
+  .ex .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;color:var(--ink-2);white-space:nowrap}
+  .ex .v.hi{color:var(--ink);font-weight:600}
+
+  /* week rows */
+  .weeks{display:grid;gap:8px}
+  .wk{display:grid;grid-template-columns:118px 1fr 190px;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .wk>div{padding:12px 13px;font-size:12.5px;color:var(--ink-2);border-right:1px solid var(--line);line-height:1.5}
+  .wk>div:last-child{border-right:0}
+  .wk .w{background:var(--surface-2);color:var(--ink)}
+  .wk .w b{display:block;font-family:var(--mono);font-size:12px;color:var(--ink-3);font-weight:500}
+  .wk .w strong{display:block;font-size:14px;font-weight:700;margin:2px 0}
+  .wk .w em{display:block;font-style:normal;font-size:11.5px;color:var(--ink-3)}
+  .wk ul{margin:0;padding-left:14px}
+  .wk li{margin:2px 0}
+  .wk .id{font-family:var(--mono);font-size:10.5px;color:var(--ink-3)}
+  .wk.cut{border-color:var(--accent)}
+  .wk.cut .w{background:var(--accent-tint);color:var(--accent-ink)}
+  .wk.cut .w b,.wk.cut .w em{color:var(--accent-ink)}
+  .wk-head{display:grid;grid-template-columns:118px 1fr 190px;padding:0 13px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .wk-head>div{padding:0 13px 4px 0}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .foot{border-top:1px solid var(--line);padding-top:18px;color:var(--ink-3);font-size:12px;line-height:1.6;max-width:90ch}
+  .foot b{color:var(--ink-2);font-weight:500}
+
+  @media (max-width:1000px){
+    .page{grid-template-columns:1fr;gap:20px;padding:22px 16px 60px}
+    .rail{position:static}
+    .rail nav{flex-direction:row;flex-wrap:wrap}
+    .rail .meta{display:none}
+    .strip{grid-template-columns:repeat(2,1fr)}
+    .strip>div{border-bottom:1px solid var(--line)}
+    .cards,.two{grid-template-columns:1fr}
+    .wk{grid-template-columns:1fr}
+    .wk>div{border-right:0;border-bottom:1px solid var(--line)}
+    .wk>div:last-child{border-bottom:0}
+    .wk-head{display:none}
+    .ex{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="page">
+  <aside class="rail">
+    <div class="brand"><span class="mark">R</span><div><b>Rexy Points 反狙擊規則</b><small>Anti-snipe rules · 2026-09-08</small></div></div>
+    <nav id="nav">
+      <a href="#s1"><span class="q">1</span><span>防的是什麼：六種 snipe</span></a>
+      <a href="#s2"><span class="q">2</span><span>三個原則、十三條規則</span></a>
+      <a href="#s3"><span class="q">3</span><span>算例：規則前後，誰拿到分</span></a>
+      <a href="#s4"><span class="q">4</span><span>落地時間線 W2–W9</span></a>
+      <a href="#s5"><span class="q">5</span><span>TGE 日與 claim 的狙擊</span></a>
+      <a href="#s6"><span class="q">6</span><span>對外口徑與待拍板參數</span></a>
+    </nav>
+    <div class="meta">
+      <b>對應文件</b><br>Rexy 上所路線圖（2026-09-03）<br>GTM Control Room · PG-02 / PG-06 / PG-09 / EX-09<br>Tokenomics 定案規格 v4-A<br><br><b>適用</b><br>Points campaign W2–W7 → TGE 空投資格
+    </div>
+  </aside>
+
+  <main>
+    <header class="head">
+      <span class="eyebrow">Rexy · Points campaign · 內部規則文件</span>
+      <h1>Points 記錄的是持續行為，不是一次性衝刺。截止時間公布時已經過去；遲到的錢包進 Season 2，不進 TGE 空投。</h1>
+      <p class="lede">這份文件定義 points campaign 的反狙擊（anti-snipe）規則：防止用戶或機器人在快照前、公告後、排行榜結算前集中刷分，稀釋真實用戶的空投，也污染交易所看的 DAU 數據。規則必須在 W2 campaign 開跑時公開，之後只補、不改。有假設的參數在第 6 節逐一列出待拍板。</p>
+      <div class="strip">
+        <div><small>帳齡門檻</small><strong>14 天</strong><span>首個 Proof 須在截止前 ≥ 14 天</span></div>
+        <div><small>每週上限</small><strong>1,000 pts</strong><span>每錢包 base points · 超出歸零</span></div>
+        <div><small>一致性乘數</small><strong>0.5× – 1.25×</strong><span>按活躍週數 · 6 週全勤 1.25×</span></div>
+        <div><small>截止時點</small><strong>W7 末</strong><span>不預告 · 公布空投時已經過去</span></div>
+        <div><small>公布後行為</small><strong>Season 2</strong><span>TGE 後 30 日 program · 不進 TGE 空投</span></div>
+      </div>
+    </header>
+
+    <!-- ══════════════ 1 ══════════════ -->
+    <section id="s1">
+      <div class="sec-head"><div class="q">1</div><div><h2>防的是什麼：六種 snipe</h2><p class="sub">每一種都在別的 points campaign 出現過；對應規則見第 2 節</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>狙擊的共同點是「用最短的時間、最少的真實使用，換最多的空投」。</b>所以每條規則都在做同一件事：把 points 和「時間 × 持續」綁死，讓集中衝刺在數學上不划算，而不是靠事後人工抓。人工複核只留給女巫 cluster 和 yapping top 50。</p></div>
+
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Snipe 類型</th><th>典型做法</th><th>對 Rexy 的傷害</th><th>對應規則</th></tr></thead>
+        <tbody>
+          <tr><td>S1 · 快照狙擊</td><td>猜到或打聽到快照日，前 3–5 天集中刷 Proof、交易、發文</td><td>6 週穩定用戶被最後一週的人稀釋；快照日一旦洩露就是公關事件</td><td class="mono">R3 R4 R5</td></tr>
+          <tr><td>S2 · 公告狙擊</td><td>W6 收網或 W8 公布空投後，新錢包大量湧入只為領空投</td><td>DAU 出現假高峰再崩，正好打在 Metrics gate（DAU ≥ 60K 持續 4 週）的觸發線上</td><td class="mono">R1 R2 R5</td></tr>
+          <tr><td>S3 · 排行榜狙擊</td><td>Squad leaderboard 結算前幾小時衝量、跳去領先的 squad</td><td>Squad v2（PG-06）的社群意義被結算時點綁架</td><td class="mono">R9</td></tr>
+          <tr><td>S4 · 女巫分拆</td><td>一人開 5–50 個錢包，每個都做到門檻，避開單錢包上限</td><td>每週上限反而變成分拆誘因；空投持幣分散度數字失真（Perps dossier 引用）</td><td class="mono">R12 + PG-09 / EX-09</td></tr>
+          <tr><td>S5 · 交易刷量</td><td>自成交、來回對敲、開倉即平，換 trading points</td><td>「trading 是高價值場景」的計分被零成本量灌水；on-chain 數據拿去交易所 data room 會被拆穿</td><td class="mono">R6</td></tr>
+          <tr><td>S6 · 乘數狙擊</td><td>截止前買 Genesis NFT 拿乘數、刷推薦、AI 生成 yapping</td><td>乘數與推薦本來是給早期社群的，變成快照前的套利品</td><td class="mono">R7 R10 R11</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note"><b>邊界。</b>反狙擊處理「時間上的集中」；反女巫處理「身份上的分拆」。兩者交叉在 S4：本文件只定 cluster 收斂的規則（R12），偵測方法與審計屬 PG-09（W5）與 EX-09（W6）。</p>
+    </section>
+
+    <!-- ══════════════ 2 ══════════════ -->
+    <section id="s2">
+      <div class="sec-head"><div class="q">2</div><div><h2>三個原則、十三條規則</h2><p class="sub">原則決定方向；規則是可以直接寫進 PRD 與埋點的參數</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>久比快值錢、截止永遠在過去、遲到的進 Season 2。</b>三個原則落成十三條規則：四條管資格與時間、三條管行為計分、三條管排行榜和乘數、三條管女巫與治理。所有數字都是可調參數，但結構不變。</p></div>
+
+      <div class="cards">
+        <div class="card"><div class="t">原則 P1</div><h4>久比快值錢</h4><p>每週有上限，活躍週數決定乘數。6 週每週做 600 分的人，一定贏過最後一週做 8,000 分的人。</p></div>
+        <div class="card"><div class="t">原則 P2</div><h4>截止永遠在過去</h4><p>截止時間不預告。公布空投的那一刻，截止已經是至少 7 天前的事。沒有「快照倒數」可以衝。</p></div>
+        <div class="card"><div class="t">原則 P3</div><h4>遲到的進 Season 2，不進 TGE 空投</h4><p>截止前 14 天內才進場的錢包，points 一分不少，但全部算到 TGE 後 30 日的 Season 2。</p></div>
+      </div>
+
+      <h3>十三條規則<span class="k">參數為建議值，見第 6 節待拍板</span></h3>
+      <div class="tbl-wrap"><table class="rules">
+        <thead><tr><th>#</th><th>規則</th><th>參數</th><th>Owner · 實作</th></tr></thead>
+        <tbody>
+          <tr class="grp"><td colspan="4">A · 資格與時間</td></tr>
+          <tr><td>R1</td><td><b>帳齡門檻</b>錢包的首個 Proof 必須在截止前 ≥ 14 天完成，否則不進 TGE 空投；已賺 points 全數保留到 Season 2。<span class="why">為什麼：直接關掉 S2。以 W7 末截止計，門檻落在 W5 結束（10/12），正好是 TOKEN2049 週、公開 hype 最高之前。</span></td><td class="param">≥ 14 天<br>first_proof_at</td><td>Product + Growth<span class="id">PG-02 埋點：first_proof_at</span></td></tr>
+          <tr><td>R2</td><td><b>Warm-up 折半</b>首個 Proof 起 7 天內賺到的 points 只計 50%。<span class="why">為什麼：讓「進場即衝刺」無利可圖；早進場的用戶 warm-up 早就過了，不受影響。</span></td><td class="param">7 天 · ×0.5</td><td>Growth<span class="id">計分引擎</span></td></tr>
+          <tr><td>R3</td><td><b>每週上限</b>每錢包每週（週一 00:00 UTC 起）base points 上限 1,000；單一類別另設每日上限（Proof 3 次 / 日；trading、yapping 見 R6、R7）。超出歸零，不遞延到下週。<span class="why">為什麼：一週能拿的分有天花板，集中衝刺最多只能填滿一週。</span></td><td class="param">1,000 / 週<br>Proof 3 / 日</td><td>Growth<span class="id">計分引擎</span></td></tr>
+          <tr><td>R4</td><td><b>一致性乘數</b>以「活躍週數」（該週 ≥ 100 base points）決定總分乘數：6 週 1.25× · 5 週 1.15× · 4 週 1.0× · 3 週 0.9× · 2 週 0.7× · 1 週 0.5×。<span class="why">為什麼：把 D7 / 留存的目標（O3）直接寫進分數；衝刺者最多拿到 0.7–0.9×。</span></td><td class="param">0.5× – 1.25×<br>階梯 6 級</td><td>Growth<span class="id">結算時計算</span></td></tr>
+          <tr><td>R5</td><td><b>截止與公布</b>截止 = W7 結束（10/26 23:59 UTC），內部密封、不預告。W8 公布空投時同步公布截止時間（已過去）。公布後的任何行為計入 Season 2。若 TGE 移到 12 月後備窗口，截止跟著移，但仍維持「公布前 ≥ 7 天」。<span class="why">為什麼：對應路線圖「內部準備，條件觸發」。截止時間只有 Growth lead、Token lead、Security 三人知道。</span></td><td class="param">公布前 ≥ 7 天<br>三人密封</td><td>Growth + Token + Security<span class="id">PG-10 · EX-09</span></td></tr>
+
+          <tr class="grp"><td colspan="4">B · 行為計分</td></tr>
+          <tr><td>R6</td><td><b>Trading 反刷量</b>只計已付手續費的成交，trading points ≤ 手續費 × k；同錢包或同 cluster 在 30 分鐘內來回的成交淨額計零；持倉 &lt; 24 小時不計 position points；每日 trading points 上限 300；只計白名單 venue / partner。<span class="why">為什麼：手續費是唯一刷不掉的成本。零成本的量不進數據，data room 才站得住。</span></td><td class="param">≤ fee × k<br>30 min · 24 h · 300 / 日</td><td>Product + Partnerships<span class="id">PA-05 / 06 venue 白名單</span></td></tr>
+          <tr><td>R7</td><td><b>Yapping 只計合格帳號</b>X 帳齡 ≥ 90 天、非新建、AI 內容偵測未命中的帳號才計 engagement；7 日滾動窗口、每日上限 200；top 50 每週人工複核；截止後發文不計。<span class="why">為什麼：yapping 是分發，不是核心行為；AI 農場一週能生上千篇。</span></td><td class="param">帳齡 90 天<br>200 / 日 · top 50 複核</td><td>Marketing<span class="id">CC-04 yapping scoring pilot</span></td></tr>
+          <tr><td>R8</td><td><b>Quest 只做 onboarding</b>quest points 一次性、不重複；佔個人總分上限 20%。<span class="why">為什麼：路線圖原則「quest 只做 onboarding」。可重複 quest 是機器人最愛的分數來源。</span></td><td class="param">≤ 20% 總分</td><td>Growth<span class="id">PG-03</span></td></tr>
+
+          <tr class="grp"><td colspan="4">C · 排行榜、乘數、推薦</td></tr>
+          <tr><td>R9</td><td><b>Squad leaderboard 用滾動平均</b>名次以 7 日滾動平均計，不用即時總分；最終獎勵按最後 3 週的平均名次；截止前 7 天鎖定 squad 成員，不可轉隊。<span class="why">為什麼：結算前幾小時衝量、跳隊，對平均名次幾乎沒影響。</span></td><td class="param">7 日均 · 末 3 週<br>鎖隊 7 天</td><td>Product<span class="id">PG-06 Squad v2</span></td></tr>
+          <tr><td>R10</td><td><b>Genesis NFT 乘數只放大持有期間</b>乘數只套用在持有 NFT 期間賺到的 base points；截止時需連續持有 ≥ 14 天；轉手即重置；乘數上限 1.3×，不隨持有數量線性疊加。<span class="why">為什麼：路線圖寫明「有限 multiplier，不線性放大空投」。截止前買 NFT 拿不到乘數。</span></td><td class="param">≤ 1.3×<br>持有 ≥ 14 天</td><td>Token + Product<span class="id">Genesis Sealing Season PRD PG-01</span></td></tr>
+          <tr><td>R11</td><td><b>推薦延遲入帳</b>被推薦錢包達成 2+ Proof 且活躍 ≥ 7 天後，推薦人才計分；推薦分 ≤ 本人分數 30%；被推薦人同樣受 R1 帳齡門檻。<span class="why">為什麼：推薦分不能靠開小號自推；30% 上限讓推薦網絡不能取代自己的使用。</span></td><td class="param">2+ Proof · 7 天<br>≤ 30% 本人分</td><td>Growth<span class="id">PG-02 referral 埋點</span></td></tr>
+
+          <tr class="grp"><td colspan="4">D · 女巫與治理</td></tr>
+          <tr><td>R12</td><td><b>Cluster 收斂為一份</b>PG-09（W5）與 EX-09（W6）以資金來源、時間指紋、裝置 / IP、行為相似度做 cluster；同 cluster 合併為一份配額，取最高單錢包分；明顯農場計零。W8–W9 開 7 天申訴窗口，W9 出 Sybil 報告。Gitcoin Passport / 社交綁定可提高單一身份的配額上限。<span class="why">為什麼：每週上限會誘發分拆（S4）；收斂規則讓分拆的期望值等於不分拆。</span></td><td class="param">合併取最高<br>申訴 7 天</td><td>Growth + Security<span class="id">PG-09 · EX-09</span></td></tr>
+          <tr><td>R13</td><td><b>規則凍結 + 濫用條款</b>除截止時間外，所有規則與參數在 W2 campaign 開跑時公開，之後只補不改；公開規則寫明「濫用行為計零，且不另行通知」。<span class="why">為什麼：中途改參數比任何狙擊都更傷社群信任；濫用條款給 R12 法律與口徑上的依據。</span></td><td class="param">W2 公開<br>W2 後不改</td><td>Growth + Legal<span class="id">EX-02 公共語言審閱</span></td></tr>
+        </tbody>
+      </table></div>
+      <p class="note"><b>一個錢包的分數怎樣算。</b>總分 = Σ<sub>週</sub> min(1,000, base points<sub>週</sub> × warm-up 係數 × NFT 乘數) × 一致性乘數 + 推薦分（≤ 30%）。R1 決定這個分數進 TGE 空投還是 Season 2；R12 決定同一個人有幾份。</p>
+    </section>
+
+    <!-- ══════════════ 3 ══════════════ -->
+    <section id="s3">
+      <div class="sec-head"><div class="q">3</div><div><h2>算例：規則前後，誰拿到分</h2><p class="sub">四種用戶，同一套規則；base points 為假設值，只看相對關係</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>沒有規則時，最後一週的狙擊者拿 8,000 分、兩週衝刺者拿 9,000 分，都贏過 6 週穩定用戶的 3,600 分。</b>加上規則後，穩定用戶 4,125 分排第一，衝刺者 2,250，狙擊者 0（250 分進 Season 2），五錢包女巫合併成一份。規則的作用不是把分數壓低，是把排序反過來。</p></div>
+
+      <figure>
+        <figcaption><b>規則前後的總分</b><span>單位 points · W2–W7 六週 · 橫軸上限 9,000</span></figcaption>
+        <div class="ex">
+          <div class="lab"><b>A · 真實用戶</b><span>W2 進場，每週 600 base points，6 週全勤</span></div>
+          <div class="pair">
+            <div class="row"><div class="track"><div class="fill naive" style="width:40%"></div></div><div class="v">3,600 規則前</div></div>
+            <div class="row"><div class="track"><div class="fill rule" style="width:45.8%"></div></div><div class="v hi">4,125 規則後</div></div>
+          </div>
+          <div class="lab"><b>B · 最後一週狙擊</b><span>10/20 首個 Proof，W7 一週刷 8,000</span></div>
+          <div class="pair">
+            <div class="row"><div class="track"><div class="fill naive" style="width:88.9%"></div></div><div class="v">8,000 規則前</div></div>
+            <div class="row"><div class="track"><div class="fill rule" style="width:0%"></div></div><div class="v hi">0 · 250 → S2</div></div>
+          </div>
+          <div class="lab"><b>C · 兩週衝刺</b><span>10/6 首個 Proof，W5–W7 每週 3,000</span></div>
+          <div class="pair">
+            <div class="row"><div class="track"><div class="fill naive" style="width:100%"></div></div><div class="v">9,000 規則前</div></div>
+            <div class="row"><div class="track"><div class="fill rule" style="width:25%"></div></div><div class="v hi">2,250 規則後</div></div>
+          </div>
+          <div class="lab"><b>D · 五錢包女巫</b><span>5 個錢包各做 A 的行為</span></div>
+          <div class="pair">
+            <div class="row"><div class="track"><div class="fill naive" style="width:100%"></div></div><div class="v">18,000 規則前</div></div>
+            <div class="row"><div class="track"><div class="fill rule" style="width:45.8%"></div></div><div class="v hi">4,125 · 合併一份</div></div>
+          </div>
+        </div>
+        <div class="legend"><span><i style="background:var(--ink-3)"></i>規則前（原始加總）</span><span><i style="background:var(--accent)"></i>規則後（R1–R4、R12）</span></div>
+      </figure>
+
+      <h3>逐步計算<span class="k">截止 10/26 23:59 UTC · 每週上限 1,000 · warm-up 7 天 ×0.5</span></h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>用戶</th><th>R1 帳齡</th><th>R3 每週上限後</th><th>R2 Warm-up</th><th>R4 一致性</th><th class="n">總分</th><th>去向</th></tr></thead>
+        <tbody>
+          <tr><td>A · 真實用戶</td><td>首個 Proof 9/15，距截止 41 天 <span class="chip good"><i></i>通過</span></td><td>600 × 6 週，未觸上限</td><td>W2 那週 600 → 300</td><td>6 週活躍 → 1.25×</td><td class="n hi">(300 + 3,000) × 1.25 = 4,125</td><td>TGE 空投</td></tr>
+          <tr><td>B · 最後一週狙擊</td><td>首個 Proof 10/20，距截止 6 天 <span class="chip crit"><i></i>不通過</span></td><td>8,000 → 1,000</td><td>1,000 → 500</td><td>1 週活躍 → 0.5×</td><td class="n hi">250</td><td>全數 Season 2；TGE 空投 0</td></tr>
+          <tr><td>C · 兩週衝刺</td><td>首個 Proof 10/6，距截止 20 天 <span class="chip good"><i></i>通過</span></td><td>3,000 × 3 週 → 1,000 × 3</td><td>W5 那週 1,000 → 500</td><td>3 週活躍 → 0.9×</td><td class="n hi">(500 + 2,000) × 0.9 = 2,250</td><td>TGE 空投，約 A 的 55%</td></tr>
+          <tr><td>D · 五錢包女巫</td><td>各錢包同 A</td><td>各 3,300</td><td>各同 A</td><td>各 1.25×</td><td class="n hi">R12 合併取最高 = 4,125</td><td>一份配額；若判明農場則 0</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note"><b>為什麼 C 仍拿到分。</b>10/6 進場的人可能是 TOKEN2049 週被真實內容帶進來的用戶，不是狙擊者；規則讓他拿到穩定用戶的一半左右，而不是零。真正歸零的只有 R1 不通過（距截止 &lt; 14 天）與 R12 判明農場兩種。</p>
+    </section>
+
+    <!-- ══════════════ 4 ══════════════ -->
+    <section id="s4">
+      <div class="sec-head"><div class="q">4</div><div><h2>落地時間線 W2–W9</h2><p class="sub">對應路線圖的週次與任務編號；紅線是 R1 帳齡門檻，綠框是截止週</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>規則在 W2 開跑前公開，W5 做一次計分與反女巫複核，W6 截止內部密封，W8 公布、W9 出報告。</b>最關鍵的一步是 W2：規則沒有在 campaign 開跑時公開，之後任何補規則都會被讀成「改規則」。</p></div>
+
+      <div class="wk-head"><div>週次</div><div>反狙擊動作</div><div>Owner · 任務</div></div>
+      <div class="weeks">
+        <div class="wk"><div class="w"><b>W1 · 9/8–9/14</b><strong>定案</strong><em>本週</em></div><div data-lane="動作"><ul><li>拍板第 6 節參數；規則文案交 Legal 做公共語言審閱</li><li>計分引擎實作 R2–R4、R8、R11；PG-02 埋點加 first_proof_at、referral、fee_paid</li></ul></div><div data-lane="Owner"><span class="id">Growth · Product · Legal</span><br>PG-02 · EX-02</div></div>
+        <div class="wk"><div class="w"><b>W2 · 9/15–9/21</b><strong>公開規則</strong><em>campaign 開跑</em></div><div data-lane="動作"><ul><li>Points 頁面公布 R1–R4、R6–R13 與濫用條款；只寫「截止在公布前，公布即截止」</li><li>Trading venue 白名單（R6）隨 partner 簽約更新，只增不減</li></ul></div><div data-lane="Owner"><span class="id">Growth · Marketing</span><br>PG-03 · PA-05</div></div>
+        <div class="wk"><div class="w"><b>W3–W4 · 9/22–10/5</b><strong>監控</strong><em>KBW 週流量高峰</em></div><div data-lane="動作"><ul><li>每週看：新錢包 first_proof 分佈、每週觸頂錢包比例、trading 30 分鐘來回率、yapping top 50</li><li>Squad v2 上線即用 7 日滾動平均（R9）</li></ul></div><div data-lane="Owner"><span class="id">Growth · Product</span><br>PG-06</div></div>
+        <div class="wk"><div class="w"><b>W5 · 10/6–10/12</b><strong>複核 + 帳齡線</strong><em>R1 門檻 10/12</em></div><div data-lane="動作"><ul><li>PG-09 Anti-Sybil 與 scoring review：第一次 cluster 分析，校準 R12 閾值</li><li>10/12 23:59 UTC 之後首個 Proof 的錢包，內部標記為 Season 2（對外不說）</li></ul></div><div data-lane="Owner"><span class="id">Growth · Security</span><br>PG-09</div></div>
+        <div class="wk"><div class="w"><b>W6 · 10/13–10/19</b><strong>收網</strong><em>eligibility 內部完成</em></div><div data-lane="動作"><ul><li>EX-09 空投模型與反女巫審計；R12 cluster 名單定稿</li><li>PG-10 eligibility / claim UX 內部完成，不公開；Squad 鎖隊 10/19 起</li></ul></div><div data-lane="Owner"><span class="id">Token · Security · Product</span><br>EX-09 · PG-10</div></div>
+        <div class="wk cut"><div class="w"><b>W7 · 10/20–10/26</b><strong>截止</strong><em>10/26 23:59 UTC 密封</em></div><div data-lane="動作"><ul><li>截止時點三人持有；計分引擎在截止後產出快照 hash，寫入 claim merkle root 前先給 Security 核對</li><li>Airdrop 機制 + claim infra 最後 check（路線圖 W7 既有項目）</li></ul></div><div data-lane="Owner"><span class="id">Growth · Token · Security</span><br>EX-10 dry run</div></div>
+        <div class="wk"><div class="w"><b>W8 · 10/27–11/2</b><strong>公布</strong><em>TGE 基準窗口</em></div><div data-lane="動作"><ul><li>公布空投時同步公布截止時間與快照 hash；開 7 天申訴窗口</li><li>Season 2（TGE 後 30 日）規則同日公開，承接公告後湧入的新用戶</li></ul></div><div data-lane="Owner"><span class="id">Growth · Marketing</span><br>EX-12</div></div>
+        <div class="wk"><div class="w"><b>W9 · 11/3–11/9</b><strong>報告</strong><em>BN Perps 週</em></div><div data-lane="動作"><ul><li>第一週留存與 Sybil 報告（路線圖既有項目）：申訴結果、cluster 收斂數、Season 2 承接率</li><li>報告摘要進 Perps readiness dossier「真實用戶與需求」一欄</li></ul></div><div data-lane="Owner"><span class="id">Growth · Internal</span><br>EX-08</div></div>
+      </div>
+      <p class="note"><b>12 月後備窗口。</b>若 W5 gate 檢查點決定延到 12 月，R1 帳齡線與 R5 截止都往後移，但兩個間距不變（帳齡 14 天、公布前 ≥ 7 天）。已經被標記為 Season 2 的錢包會因為截止後移而重新符合 R1，這是設計上接受的結果：他們確實多用了 6 週。</p>
+    </section>
+
+    <!-- ══════════════ 5 ══════════════ -->
+    <section id="s5">
+      <div class="sec-head"><div class="q">5</div><div><h2>TGE 日與 claim 的狙擊</h2><p class="sub">Points 之外的兩個狙擊面：claim 合約與 Base 上的 DEX 池。此節為選項，供 EX-07 / EX-10 討論</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>Claim 端已有「自動質押 30 天」擋住開盤賣壓；DEX 池端建議做三件事：不預告池地址、MM 與 CEX 同一刻入池啟用、開盤前 10 分鐘動態手續費遞減。</b>不做黑名單：法律口徑與公關成本都高於它擋住的量。</p></div>
+
+      <div class="two">
+        <div class="card"><div class="t">Claim 端</div><h4>讓早 claim 沒有好處</h4>
+          <ul>
+            <li><b>Claim 窗口 30 天</b>，早 claim 無加成、晚 claim 無懲罰；開盤當日沒有「搶 claim」的理由。</li>
+            <li><b>自動質押 30 天</b>（v4-A 既有）：開盤兩週的賣壓由此抽走，也是 Perps dossier 的持幣分散度證據。</li>
+            <li><b>只允許 EOA 或帶簽名的 claim</b>，不開放合約地址批量 claim；擋掉聚合器一筆交易 claim 上百個女巫錢包。</li>
+            <li><b>快照 hash 公開</b>（見 W8）：任何人可驗證 merkle root 對應的是截止時的分數，堵住「內部改名單」的質疑。</li>
+          </ul>
+        </div>
+        <div class="card"><div class="t">DEX 池端 · Base</div><h4>讓開盤第一個 block 沒有暴利</h4>
+          <ul>
+            <li><b>不預告池地址與時間</b>；池由 MM 在 Alpha / Gate / MEXC 開盤同一刻入池並啟用交易（EX-07 指數第四來源）。</li>
+            <li><b>開盤前 10 分鐘動態手續費</b>：由高遞減到正常（Uniswap v4 hook 或分段調整），機器人在第一個 block 進場的價差被手續費吃掉，真實用戶 10 分鐘後正常交易。</li>
+            <li><b>首 20 個 block 單筆上限</b>（例：池深度的 1%），避免單一地址掃空一邊。</li>
+            <li><b>不做黑名單、不做交易稅</b>：兩者都要在合約留權限，與「流通供給可驗證、無隱藏籌碼」的敘事衝突。</li>
+          </ul>
+        </div>
+      </div>
+      <p class="note"><b>CEX 端不需要額外規則。</b>同日上三個場所、MM 深度 SLA ±2% 之內，單一場所拉盤對指數影響有限；這是 Q1 已定的結構，不在本文件範圍。</p>
+    </section>
+
+    <!-- ══════════════ 6 ══════════════ -->
+    <section id="s6">
+      <div class="sec-head"><div class="q">6</div><div><h2>對外口徑與待拍板參數</h2><p class="sub">公開什麼、不公開什麼；哪些數字要在 W1 定</p></div></div>
+      <div class="answer"><div class="lbl">一句話答案</div><p><b>公開規則的結構與所有參數，只密封截止時間與 cluster 偵測特徵。</b>公開得越完整，「改規則」的指控越站不住；密封得越少，洩露的面越小。九個參數要在 W1 拍板，每個都有預設值和 owner。</p></div>
+
+      <div class="two">
+        <div class="card"><div class="t">W2 公開</div><h4>寫進 Points 頁面的內容</h4>
+          <ul>
+            <li>R1 帳齡 14 天、R2 warm-up、R3 每週上限、R4 乘數階梯</li>
+            <li>R6–R8 各類別的上限與計法；R6 的 venue 白名單</li>
+            <li>R9 滾動平均與鎖隊；R10 NFT 乘數上限；R11 推薦規則</li>
+            <li>R12 的原則：「同一人多錢包合併為一份」；申訴流程</li>
+            <li>R13：「截止在公布前，公布即截止」；濫用計零條款</li>
+          </ul>
+        </div>
+        <div class="card"><div class="t">密封</div><h4>只有三人知道、W8 才公開的內容</h4>
+          <ul>
+            <li>截止的確切時點（R5）</li>
+            <li>Cluster 偵測用的特徵與閾值（R12）</li>
+            <li>每週人工複核名單（R7 top 50）與內部 Season 2 標記</li>
+            <li>單一身份的配額上限具體數字，公布空投時一併公開</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>九個待拍板參數<span class="k">預設值 = 本文件用的數字 · W1 內定案</span></h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>參數</th><th>預設值</th><th>取捨</th><th>Owner</th></tr></thead>
+        <tbody>
+          <tr><td>R1 帳齡門檻</td><td class="mono">14 天</td><td>更長（21 天）擋更多 S2，但把 TOKEN2049 週帶進來的真用戶推到 Season 2</td><td>Growth</td></tr>
+          <tr><td>R2 warm-up 長度與係數</td><td class="mono">7 天 · ×0.5</td><td>係數愈低，早進場愈有利；低於 0.5 新用戶第一週體感太差</td><td>Growth</td></tr>
+          <tr><td>R3 每週上限</td><td class="mono">1,000</td><td>要與空投分配曲線一起看：上限決定「全勤 whale」與「全勤 newbie」的分數差距上限</td><td>Growth + Token</td></tr>
+          <tr><td>R4 乘數階梯</td><td class="mono">0.5× – 1.25×</td><td>6 級階梯是為 6 週 campaign 設的；延到 12 月要加級數而不是改比例</td><td>Growth</td></tr>
+          <tr><td>R6 手續費倍率 k 與每日上限</td><td class="mono">k 待定 · 300 / 日</td><td>k 由 partner venue 的實際費率反推；每日上限決定 trading 佔總分的天花板</td><td>Product + Partnerships</td></tr>
+          <tr><td>R10 NFT 乘數上限</td><td class="mono">1.3×</td><td>路線圖只說「有限、不線性」；1.3× 是假設，Genesis 持有人的預期要由 Token 對齊</td><td>Token</td></tr>
+          <tr><td>R11 推薦分佔比上限</td><td class="mono">30%</td><td>愈高愈利 KOL 帶量，愈低愈利自用；韓國渠道（KR-05）依賴推薦，要與 Korea lead 對</td><td>Growth + Korea</td></tr>
+          <tr><td>R12 單一身份配額上限</td><td class="mono">待定</td><td>以 TGE 解鎖的空投 70M（7pp）為分母；Passport / 社交綁定可提高。這個數字決定女巫分拆還值不值得</td><td>Token + Security</td></tr>
+          <tr><td>R5 截止與公布的間距</td><td class="mono">≥ 7 天</td><td>間距愈長，洩露窗口愈長；短於 7 天則 claim merkle root 來不及審計</td><td>Growth + Token + Security</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <div class="foot">
+      <b>假設與範圍。</b>所有參數為建議值，第 3 節算例只示範相對關係。W 週次、任務編號（PG / PA / CC / KR / EX）與 TGE 窗口沿用 Rexy 上所路線圖（2026-09-03）；空投 15%、TGE 解鎖 7pp、自動質押 30 天沿用 Tokenomics v4-A。第 5 節 DEX 池措施為選項，需與 MM 及 EX-07 流動性方案一併決定。本文件不涵蓋反女巫的偵測方法，該部分屬 PG-09 / EX-09。
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const links=[...document.querySelectorAll("#nav a")];
+  const secs=links.map(a=>document.querySelector(a.getAttribute("href"))).filter(Boolean);
+  if(!("IntersectionObserver" in window)||!secs.length)return;
+  const io=new IntersectionObserver(es=>{
+    es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.toggle("on",l.getAttribute("href")==="#"+e.target.id))}});
+  },{rootMargin:"-20% 0px -70% 0px",threshold:0});
+  secs.forEach(s=>io.observe(s));
+})();
+</script>
