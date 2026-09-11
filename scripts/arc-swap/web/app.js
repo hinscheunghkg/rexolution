@@ -115,7 +115,11 @@ const errorAbi = parseAbi(knownErrors);
 
 // Turn raw revert bytes into something readable, unwrapping nested reasons.
 function describeRevert(data, depth = 0) {
-  if (!data || data === '0x') return depth ? '(no data)' : 'no revert data — the wallet RPC hid the reason; set an Arc RPC URL under Advanced and retry so the page can read it';
+  if (!data || data === '0x') {
+    if (depth) return '(no data)';
+    const rpc = $('rpcUrl').value.trim();
+    return rpc ? `no revert data — the RPC at ${rpc} hides revert reasons; try a different Arc RPC URL under Advanced (Infura, QuickNode, Alchemy)` : 'no revert data — the wallet RPC hid the reason; set an Arc RPC URL under Advanced and retry so the page can read it';
+  }
   try {
     const d = decodeErrorResult({ abi: errorAbi, data });
     const args = d.args ?? [];

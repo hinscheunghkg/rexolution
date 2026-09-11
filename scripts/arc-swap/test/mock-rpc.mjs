@@ -61,6 +61,7 @@ function ethCall({ to, data, value }) {
   if (to === ROUTER && s === S.execute) {
     seenExecute = { data, value };
     // MOCK_REVERT=slippage makes the router revert like a real V4TooLittleReceived, wrapped in ExecutionFailed
+    if (process.env.MOCK_REVERT === 'nodata') throw Object.assign(new Error('execution reverted'), { code: 3 });
     if (process.env.MOCK_REVERT === 'slippage') {
       const inner = encodeErrorResult({ abi: parseAbi(['error V4TooLittleReceived(uint256 minAmountOutReceived, uint256 amountReceived)']), errorName: 'V4TooLittleReceived', args: [24750n * 10n ** 18n, 24000n * 10n ** 18n] });
       const outer = encodeErrorResult({ abi: parseAbi(['error ExecutionFailed(uint256 commandIndex, bytes message)']), errorName: 'ExecutionFailed', args: [0n, inner] });
