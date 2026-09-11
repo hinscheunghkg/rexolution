@@ -164,15 +164,45 @@ window.addEventListener('eip6963:announceProvider', (e) => {
 });
 window.dispatchEvent(new Event('eip6963:requestProvider'));
 
-function findProvider() {
-  if (announced.length) {
-    const pick = announced.find((d) => /metamask|rabby/i.test(d.info?.name ?? '')) ?? announced[0];
-    return pick.provider;
-  }
+// All wallets we can see, as {name, icon, rdns, provider}.
+function listProviders() {
+  const out = [];
+  for (const d of announced) out.push({ name: d.info?.name ?? 'Wallet', icon: d.info?.icon ?? '', rdns: d.info?.rdns ?? '', provider: d.provider });
   const eth = window.ethereum;
-  if (!eth) return null;
-  if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers.find((p) => p.isMetaMask) ?? eth.providers[0];
-  return eth;
+  const legacy = eth ? (Array.isArray(eth.providers) && eth.providers.length ? eth.providers : [eth]) : [];
+  for (const p of legacy) {
+    if (out.some((o) => o.provider === p)) continue;
+    out.push({ name: p.isRabby ? 'Rabby' : p.isMetaMask ? 'MetaMask' : p.isCoinbaseWallet ? 'Coinbase Wallet' : 'Browser wallet', icon: '', rdns: '', provider: p });
+  }
+  return out;
+}
+
+const WALLET_PREF = 'arc-swap:wallet';
+function findProvider() {
+  const all = listProviders();
+  if (!all.length) return null;
+  let pref = null; try { pref = localStorage.getItem(WALLET_PREF); } catch {}
+  const chosen = pref && all.find((w) => (w.rdns || w.name) === pref);
+  return (chosen ?? all[0]).provider;
+}
+
+// When several wallets are installed, let the user pick one (remembered for next time).
+function chooseWallet(all) {
+  return new Promise((resolve) => {
+    const box = $('walletPick');
+    box.innerHTML = '<div class="pick-title">Which wallet?</div>';
+    for (const w of all) {
+      const b = document.createElement('button');
+      b.className = 'ghost pick';
+      b.innerHTML = `${w.icon ? `<img src="${w.icon}" alt="">` : ''}<span>${w.name}</span>`;
+      b.addEventListener('click', () => {
+        try { localStorage.setItem(WALLET_PREF, w.rdns || w.name); } catch {}
+        box.hidden = true; resolve(w.provider);
+      });
+      box.appendChild(b);
+    }
+    box.hidden = false;
+  });
 }
 
 async function waitForProvider(ms = 2500) {
@@ -218,20 +248,27 @@ async function withWalletHint(label, promise) {
 }
 
 function providerName(p) {
-  const a = announced.find((d) => d.provider === p);
-  return a?.info?.name ?? (p.isRabby ? 'Rabby' : p.isMetaMask ? 'MetaMask' : p.isCoinbaseWallet ? 'Coinbase Wallet' : 'your wallet');
+  return listProviders().find((w) => w.provider === p)?.name ?? 'your wallet';
 }
 
 async function connect() {
   if (S.connecting) { setStatus('Already connecting. Check your wallet extension for a pending request.', 'err'); return; }
   S.connecting = true;
   setStatus('Looking for a wallet…');
-  const provider = await waitForProvider();
+  let provider = await waitForProvider();
   if (!provider) {
     setStatus(noWalletHelp(), 'err');
     S.connecting = false;
     return;
   }
+  const all = listProviders();
+  let pref = null; try { pref = localStorage.getItem(WALLET_PREF); } catch {}
+  const remembered = pref && all.find((w) => (w.rdns || w.name) === pref);
+  if (all.length > 1 && (!remembered || S.forcePick)) {
+    setStatus('Several wallets found. Pick the one you want to use.');
+    provider = await chooseWallet(all);
+  }
+  S.forcePick = false;
   const name = providerName(provider);
   try {
     S.provider = provider;
@@ -255,8 +292,9 @@ async function connect() {
     S.walletClient = createWalletClient({ chain: arc, transport, account: S.account });
     setStatus(`Connected ${short(S.account)}. Switching ${name} to Arc… approve in the popup if asked.`);
     await withWalletHint(`${name} is asking you to switch to Arc.`, ensureArcChain());
-    $('connectBtn').textContent = short(S.account);
+    $('connectBtn').textContent = `${name} · ${short(S.account)}`;
     $('connectBtn').classList.add('connected');
+    $('connectBtn').title = 'Click to switch wallet';
     setStatus('Connected to Arc.', 'ok');
     provider.on?.('accountsChanged', () => location.reload());
     provider.on?.('chainChanged', () => location.reload());
@@ -511,7 +549,10 @@ async function swap() {
 // wire up
 // ---------------------------------------------------------------------------
 function init() {
-  $('connectBtn').addEventListener('click', connect);
+  $('connectBtn').addEventListener('click', () => {
+    if (S.account) { S.forcePick = true; try { localStorage.removeItem(WALLET_PREF); } catch {} location.reload(); return; }
+    connect();
+  });
   $('findBtn').addEventListener('click', findPool);
   $('token').addEventListener('keydown', (e) => { if (e.key === 'Enter') findPool(); });
   $('amount').addEventListener('input', scheduleQuote);
