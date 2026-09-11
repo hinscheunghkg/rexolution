@@ -26,7 +26,7 @@ const sel = (sig) => toFunctionSelector(sig);
 const S = {
   decimals: sel('function decimals()'), symbol: sel('function symbol()'), balanceOf: sel('function balanceOf(address)'), totalSupply: sel('function totalSupply()'),
   allowance: sel('function allowance(address,address)'), p2allowance: sel('function allowance(address,address,address)'),
-  getSlot0: sel('function getSlot0(bytes32)'), getLiquidity: sel('function getLiquidity(bytes32)'),
+  getSlot0: sel('function getSlot0(bytes32)'), erc20TransferFrom: sel('function transferFrom(address,address,uint256)'), p2TransferFrom: sel('function transferFrom(address,address,uint160,address)'), getLiquidity: sel('function getLiquidity(bytes32)'),
   quote: sel('function quoteExactInputSingle((( address,address,uint24,int24,address),bool,uint128,bytes))'.replace('(( ', '((')),
   execute: sel('function execute(bytes,bytes[],uint256)'),
 };
@@ -42,8 +42,10 @@ function ethCall({ to, data, value }) {
     if (s === S.balanceOf) return enc(['uint256'], [10n ** 30n]);
     if (s === S.totalSupply) return enc(['uint256'], [to === USDC ? 10n ** 15n : 10n ** 9n * 10n ** 18n]);
     if (s === S.allowance) return enc(['uint256'], [0n]);
+    if (s === S.erc20TransferFrom) return enc(['bool'], [true]);
   }
   if (to === PERMIT2 && s === S.p2allowance) return enc(['uint160', 'uint48', 'uint48'], [0n, 0, 0]);
+  if (to === PERMIT2 && s === S.p2TransferFrom) return '0x';
   if (to === STATE_VIEW) {
     const id = data.slice(10, 74);
     if (id !== poolId.slice(2)) throw new Error('unknown poolId ' + id);

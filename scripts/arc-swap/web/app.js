@@ -7,6 +7,7 @@ import {
   createWalletClient,
   custom,
   http,
+  fallback,
   defineChain,
   decodeErrorResult,
   encodeAbiParameters,
@@ -41,6 +42,8 @@ const ACT_SWAP_EXACT_IN_SINGLE = 0x06;
 const ACT_SETTLE_ALL = 0x0c;
 const ACT_TAKE_ALL = 0x0f;
 const EXPLORER = 'https://arcscan.app';
+const BUILD = '__BUILD__';
+const DEFAULT_RPC = 'https://rpc.arc-scan.org';
 
 const arc = defineChain({
   id: 5042,
@@ -117,7 +120,7 @@ const errorAbi = parseAbi(knownErrors);
 function describeRevert(data, depth = 0) {
   if (!data || data === '0x') {
     if (depth) return '(no data)';
-    const rpc = $('rpcUrl').value.trim();
+    const rpc = $('rpcUrl').value.trim() || DEFAULT_RPC;
     return rpc ? `no revert data — the RPC at ${rpc} hides revert reasons; try a different Arc RPC URL under Advanced (Infura, QuickNode, Alchemy)` : 'no revert data — the wallet RPC hid the reason; set an Arc RPC URL under Advanced and retry so the page can read it';
   }
   try {
@@ -329,13 +332,20 @@ function providerName(p) {
 // Reads and simulations go through a direct RPC when one is set (wallets hide revert
 // reasons and rate-limit log scans); transactions always go through the wallet.
 const RPC_PREF = 'arc-swap:rpc';
+const isRevert = (e) => (e?.code === 3) || /revert/i.test(e?.message ?? '') || /revert/i.test(e?.details ?? '');
 function readClient() {
-  const url = $('rpcUrl').value.trim();
-  if (url && /^https?:\/\//.test(url)) {
-    if (S.readUrl !== url) { S.readClient = createPublicClient({ chain: arc, transport: http(url, { batch: false }) }); S.readUrl = url; try { localStorage.setItem(RPC_PREF, url); } catch {} }
-    return S.readClient;
+  const typed = $('rpcUrl').value.trim();
+  const url = /^https?:\/\//.test(typed) ? typed : DEFAULT_RPC;
+  const key = `${url}|${S.provider ? 1 : 0}`;
+  if (S.readKey !== key) {
+    const direct = http(url, { batch: false, retryCount: 1 });
+    // direct RPC first (returns revert reasons); wallet as fallback for network/CORS failures only
+    const transport = S.provider ? fallback([direct, custom(S.provider)], { retryCount: 0, shouldThrow: isRevert }) : direct;
+    S.readClient = createPublicClient({ chain: arc, transport });
+    S.readKey = key;
+    if (typed) { try { localStorage.setItem(RPC_PREF, typed); } catch {} }
   }
-  return S.publicClient;
+  return S.readClient;
 }
 
 async function connect() {
@@ -650,6 +660,17 @@ async function diagnose({ currencyIn, amountIn, minOut, zeroForOne, deadline }) 
     lines.push(`token→Permit2 allowance ${a1 >= amountIn ? 'ok' : 'MISSING'} (${a1})`);
     lines.push(`Permit2→router allowance ${a2 >= amountIn && Number(exp) > Number(block.timestamp) ? 'ok' : 'MISSING/EXPIRED'} (${a2}, exp ${exp})`);
   }
+  if (!isNative(currencyIn)) {
+    // Can Permit2 actually pull the tokens for the router? (eth_call impersonating the router / Permit2)
+    try {
+      await c.simulateContract({ address: currencyIn, abi: parseAbi(['function transferFrom(address from, address to, uint256 amount) returns (bool)']), functionName: 'transferFrom', args: [S.account, ADDR.poolManager, amountIn], account: ADDR.permit2 });
+      lines.push(`${inMeta.symbol}.transferFrom by Permit2: ok`);
+    } catch (te) { lines.push(`${inMeta.symbol}.transferFrom by Permit2 FAILS: ${explainError(te)}`); }
+    try {
+      await c.simulateContract({ address: ADDR.permit2, abi: parseAbi(['function transferFrom(address from, address to, uint160 amount, address token)']), functionName: 'transferFrom', args: [S.account, ADDR.poolManager, amountIn, currencyIn], account: ADDR.universalRouter });
+      lines.push('Permit2.transferFrom for the router: ok');
+    } catch (pe) { lines.push(`Permit2.transferFrom for the router FAILS: ${explainError(pe)}`); }
+  }
   try {
     const { result } = await c.simulateContract({ address: ADDR.v4Quoter, abi: quoterAbi, functionName: 'quoteExactInputSingle', args: [{ poolKey: S.pool.key, zeroForOne, exactAmount: amountIn, hookData: hookData() }] });
     lines.push(`re-quote ${fmt(result[0], outMeta.decimals)} ${outMeta.symbol} (min ${fmt(minOut, outMeta.decimals)}) ${result[0] >= minOut ? 'ok' : 'BELOW MIN — raise slippage'}`);
@@ -660,6 +681,7 @@ async function diagnose({ currencyIn, amountIn, minOut, zeroForOne, deadline }) 
     await c.simulateContract({ address: ADDR.universalRouter, abi: universalRouterAbi, functionName: 'execute', args: [commands, inputs, BigInt(Number(block.timestamp) + 600)], value: isNative(currencyIn) ? amountIn : 0n, account: S.account });
     lines.push('swap with minOut=0 and fresh deadline: OK → the failure is slippage or the deadline');
   } catch (se) { lines.push(`swap with minOut=0 still fails: ${explainError(se)}`); }
+  lines.push(`hook ${S.pool.key.hooks} · router ${ADDR.universalRouter} · build ${BUILD}`);
   log(`<b>Diagnosis</b><br>${lines.map((l) => `• ${l}`).join('<br>')}`, 'info');
 }
 
@@ -697,6 +719,7 @@ function init() {
   try { const saved = localStorage.getItem(RPC_PREF); if (saved && !$('rpcUrl').value) $('rpcUrl').value = saved; } catch {}
   const params = new URLSearchParams(location.search);
   if (params.get('token')) $('token').value = params.get('token');
+  $('build').textContent = `build ${BUILD}`;
   setStatus('Connect your wallet to start.');
   waitForProvider(3000).then((p) => { if (!p) setStatus(noWalletHelp(), 'err'); });
 }

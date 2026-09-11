@@ -18,8 +18,9 @@ const result = await build({
   legalComments: 'none',
   logLevel: 'warning',
 });
-const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
+const stamp = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script').replace('__BUILD__', stamp);
 const template = await readFile(join(here, 'index.template.html'), 'utf8');
 if (!template.includes('<script>/*APP*/</script>')) throw new Error('template is missing the /*APP*/ placeholder');
 await writeFile(out, template.replace('<script>/*APP*/</script>', () => `<script>${js}</script>`));
-console.log(`wrote ${out} (${(js.length / 1024).toFixed(0)} KB of JS inlined)`);
+console.log(`wrote ${out} (${(js.length / 1024).toFixed(0)} KB of JS inlined, build ${stamp})`);
