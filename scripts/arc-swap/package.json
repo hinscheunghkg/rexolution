@@ -5,12 +5,17 @@
   "type": "module",
   "description": "Buy/sell o1 Launchpad tokens on Arc mainnet directly through Uniswap v4 (no UI needed)",
   "scripts": {
-    "swap": "node --env-file=.env swap.mjs"
+    "swap": "node --env-file=.env swap.mjs",
+    "build:web": "node web/build.mjs",
+    "test:mock": "node test/mock-rpc.mjs"
   },
   "engines": {
     "node": ">=20.6"
   },
   "dependencies": {
     "viem": "^2.56.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

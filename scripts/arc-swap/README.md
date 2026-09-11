@@ -1,18 +1,42 @@
 # arc-swap — trade o1 Launchpad tokens on Arc without a UI
 
+Two ways to use it: a **web page** (`swap.html`, connect your wallet, click swap)
+or a **command-line script** (`swap.mjs`, private key in `.env`). Both do the same
+on-chain flow.
+
+## Web page (easiest)
+
+1. Open `swap.html` in Chrome, Brave or Firefox with MetaMask or Rabby installed.
+   Double-clicking the file works. If your wallet does not show up on a `file://`
+   page, serve it instead: `npx serve scripts/arc-swap` and open the printed URL.
+2. Click **Connect wallet**. The page switches your wallet to Arc (chain 5042). If
+   Arc is not in your wallet yet, open **Advanced**, paste an Arc RPC URL, and
+   connect again so the page can add the network.
+3. Paste the token address and click **Find**. The page locates the token's
+   Uniswap v4 pool and shows the price, fee and hook.
+4. Pick **Buy** or **Sell**, type an amount, and the quote appears. Click the
+   button and confirm in your wallet. The first buy of a token asks for two
+   approvals (token to Permit2, Permit2 to the router), then the swap.
+
+The page is one self-contained file (viem is bundled in), talks to the chain only
+through your wallet, and never sees a private key. Rebuild it after editing
+`web/app.js` or `web/index.template.html` with `npm run build:web`.
+
+## Command line
+
 o1 Launchpad tokens have no bonding curve and no "graduation". The whole supply is
 placed in one permanent Uniswap v4 pool (with o1's fee hook) the moment the token
 launches, paired against USDC. So trading one is a plain Uniswap v4 swap on Arc,
 and this script does that swap directly against the contracts.
 
-## Requirements
+### Requirements
 
 - Node 20.6+ (uses `--env-file`)
 - An Arc mainnet RPC URL (chain id 5042). Take one from the Arc docs or your node provider.
 - A wallet with USDC **on Arc**. Gas on Arc is paid in USDC, so bridge USDC to Arc
   first via Circle CCTP. Nothing works without it.
 
-## Setup
+### Setup
 
 ```bash
 cd scripts/arc-swap
@@ -20,7 +44,7 @@ npm install
 cp .env.example .env   # fill in ARC_RPC_URL and PRIVATE_KEY
 ```
 
-## Use
+### Use
 
 ```bash
 # inspect the pool: PoolKey, hook, liquidity, current price
@@ -39,6 +63,12 @@ npm run swap -- sell 0xTOKEN 1000000
 Amounts are human units (`25` = 25 USDC). Always run `--dry-run` first: it quotes
 the trade and simulates the exact Universal Router call, so a revert shows up
 before you spend anything.
+
+## Testing offline
+
+`npm run test:mock` starts a fake Arc JSON-RPC on `:8545` with one hooked pool
+(token `0x1111…1111`). Point `ARC_RPC_URL` at it to exercise the CLI, or drive the
+page with a stub wallet. It is how this tool was verified without mainnet access.
 
 ## How it finds the pool
 

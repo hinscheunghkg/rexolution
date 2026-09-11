@@ -1,4 +1,5 @@
-// Minimal Arc-like JSON-RPC mock to exercise swap.mjs offline.
+// Minimal Arc-like JSON-RPC mock to exercise swap.mjs and swap.html offline.
+// Run: node test/mock-rpc.mjs   (listens on :8545, chain id 5042)
 import http from 'node:http';
 import { encodeAbiParameters, keccak256, toHex, pad, encodeEventTopics, parseAbi, decodeFunctionData, decodeAbiParameters, toFunctionSelector } from 'viem';
 
@@ -32,7 +33,7 @@ const S = {
 const enc = (types, vals) => encodeAbiParameters(types.map((t) => ({ type: t })), vals);
 const str = (s) => enc(['string'], [s]);
 
-let seenExecute = null;
+let seenExecute = null; let txCounter = 0; const sentTxs = []; const zero = '0x0000000000000000000000000000000000000000';
 function ethCall({ to, data, value }) {
   to = to.toLowerCase(); const s = data.slice(0, 10);
   if (to === TOKEN || to === USDC) {
@@ -76,6 +77,18 @@ function handle({ method, params }) {
     case 'eth_getBalance': return toHex(5n * 10n ** 18n);
     case 'eth_call': return ethCall(params[0]);
     case 'eth_estimateGas': return '0x30000';
+    case 'eth_gasPrice': return '0x4a817c800';
+    case 'eth_maxPriorityFeePerGas': return '0x0';
+    case 'eth_getTransactionCount': return '0x1';
+    case 'eth_sendTransaction': case 'eth_sendRawTransaction': {
+      const h = '0x' + (++txCounter).toString(16).padStart(64, '0'); sentTxs.push({ hash: h, tx: params[0] }); return h;
+    }
+    case 'eth_getTransactionReceipt': {
+      const h = params[0]; if (!sentTxs.find((t) => t.hash === h)) return null;
+      return { transactionHash: h, blockNumber: toHex(LATEST), blockHash: pad('0xcd'), transactionIndex: '0x0', status: '0x1',
+        gasUsed: '0x2a000', cumulativeGasUsed: '0x2a000', effectiveGasPrice: '0x4a817c800', logs: [], logsBloom: '0x' + '0'.repeat(512), type: '0x2', from: (sentTxs.find((t) => t.hash === h).tx.from ?? zero), to: ROUTER, contractAddress: null };
+    }
+    case 'eth_getBlockByNumber': return { number: toHex(LATEST), hash: pad('0xcd'), parentHash: pad('0xcc'), timestamp: toHex(Math.floor(Date.now() / 1000)), baseFeePerGas: '0x4a817c800', gasLimit: '0x1c9c380', gasUsed: '0x0', transactions: [], miner: zero, nonce: '0x0000000000000000', difficulty: '0x0', totalDifficulty: '0x0', extraData: '0x', logsBloom: '0x' + '0'.repeat(512), sha3Uncles: pad('0x00'), stateRoot: pad('0x00'), receiptsRoot: pad('0x00'), transactionsRoot: pad('0x00'), size: '0x0', uncles: [], mixHash: pad('0x00') };
     case 'eth_getLogs': {
       const f = params[0]; const from = BigInt(f.fromBlock), to = BigInt(f.toBlock);
       if (f.address.toLowerCase() !== POOL_MANAGER) return [];
