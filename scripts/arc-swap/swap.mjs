@@ -54,7 +54,7 @@ const ADDR = {
   // USDC on Arc: native gas token (18 dec via msg.value) AND this 6-decimal ERC-20 predeploy.
   usdcErc20: '0x3600000000000000000000000000000000000000',
 };
-const UNIVERSAL_ROUTER_CREATION_BLOCK = 1950059n; // no v4 pools can exist before this
+const UNIVERSAL_ROUTER_CREATION_BLOCK = 20147782n; // o1 launchpad suite start block on Arc; no o1 pool exists earlier
 
 // Universal Router command + v4 router actions (Commands.sol / Actions.sol)
 const CMD_V4_SWAP = 0x10;

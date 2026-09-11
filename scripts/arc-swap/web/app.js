@@ -36,7 +36,17 @@ const ADDR = {
   permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
   usdcErc20: '0x3600000000000000000000000000000000000000',
 };
-const ROUTER_CREATION_BLOCK = 1950059n;
+// o1 Launchpad on Arc mainnet (from docs.o1.exchange → production contracts → Arc mainnet)
+const O1 = {
+  launchFactory: '0xeE3E862Efde6DCd6DF5648AF0E2731B9D1dF4605',
+  launchHook: '0x20EEad6db6b3d0a4491E9073119DD0EBFF166AcC',
+  feeEscrow: '0x1D8c991A9019df7D72ADCd8deA6f12D600C9d02f',
+  tokenDeployer: '0xFf70918Ef17A2D74d683a8297813B177BaFaD1f4',
+  launchBuyAdapter: '0xacA9150b1ecAeddEf5cF6a24f12b060049Cec06f',
+  swapXRouter: '0x528154f6DE668988A2DD1B4db96F470716d0493B',
+  startBlock: 20147782n, // "arc-mainnet-launchpad-v4-minimal starts at block 20147782"
+};
+const ROUTER_CREATION_BLOCK = O1.startBlock; // no o1 pool exists before the launchpad was deployed
 const CMD_V4_SWAP = 0x10;
 const ACT_SWAP_EXACT_IN_SINGLE = 0x06;
 const ACT_SETTLE_ALL = 0x0c;
