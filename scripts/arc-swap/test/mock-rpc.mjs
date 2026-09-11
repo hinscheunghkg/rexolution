@@ -24,7 +24,7 @@ const sqrtPriceX96 = 79228162514264337593543950336n / 1000n; // price ≈ 1e-6 c
 
 const sel = (sig) => toFunctionSelector(sig);
 const S = {
-  decimals: sel('function decimals()'), symbol: sel('function symbol()'), balanceOf: sel('function balanceOf(address)'),
+  decimals: sel('function decimals()'), symbol: sel('function symbol()'), balanceOf: sel('function balanceOf(address)'), totalSupply: sel('function totalSupply()'),
   allowance: sel('function allowance(address,address)'), p2allowance: sel('function allowance(address,address,address)'),
   getSlot0: sel('function getSlot0(bytes32)'), getLiquidity: sel('function getLiquidity(bytes32)'),
   quote: sel('function quoteExactInputSingle((( address,address,uint24,int24,address),bool,uint128,bytes))'.replace('(( ', '((')),
@@ -40,6 +40,7 @@ function ethCall({ to, data, value }) {
     if (s === S.decimals) return enc(['uint8'], [to === USDC ? 6 : 18]);
     if (s === S.symbol) return str(to === USDC ? 'USDC' : 'MEME');
     if (s === S.balanceOf) return enc(['uint256'], [10n ** 30n]);
+    if (s === S.totalSupply) return enc(['uint256'], [to === USDC ? 10n ** 15n : 10n ** 9n * 10n ** 18n]);
     if (s === S.allowance) return enc(['uint256'], [0n]);
   }
   if (to === PERMIT2 && s === S.p2allowance) return enc(['uint160', 'uint48', 'uint48'], [0n, 0, 0]);

@@ -69,6 +69,7 @@ const erc20Abi = parseAbi([
   'function decimals() view returns (uint8)',
   'function symbol() view returns (string)',
   'function balanceOf(address) view returns (uint256)',
+  'function totalSupply() view returns (uint256)',
   'function allowance(address owner, address spender) view returns (uint256)',
   'function approve(address spender, uint256 amount) returns (bool)',
 ]);
@@ -281,11 +282,13 @@ async function loadPool(client, token) {
   const p1per0 = num / Q192;
   const priceHuman = tokenIs0 ? p1per0 : p1per0 === 0n ? 0n : (SCALE * SCALE) / p1per0;
 
-  return { key, id, quote, tokenMeta, quoteMeta, slot0, liquidity, priceHuman };
+  const supply = await client.readContract({ address: token, abi: erc20Abi, functionName: 'totalSupply' }).catch(() => null);
+  const mcap = supply === null ? null : (priceHuman * supply) / 10n ** BigInt(tokenMeta.decimals);
+  return { key, id, quote, tokenMeta, quoteMeta, slot0, liquidity, priceHuman, supply, mcap };
 }
 
 function printPool(token, pool) {
-  const { key, id, quote, tokenMeta, quoteMeta, slot0, liquidity, priceHuman } = pool;
+  const { key, id, quote, tokenMeta, quoteMeta, slot0, liquidity, priceHuman, supply, mcap } = pool;
   console.log(`token        ${token} (${tokenMeta.symbol}, ${tokenMeta.decimals} dec)`);
   console.log(`quote        ${quote} (${quoteMeta.symbol}, ${quoteMeta.decimals} dec)`);
   console.log(`poolId       ${id}`);
@@ -293,6 +296,10 @@ function printPool(token, pool) {
   console.log(`             fee=${key.fee} tickSpacing=${key.tickSpacing} hooks=${key.hooks}`);
   console.log(`tick         ${slot0[1]}   lpFee=${slot0[3]}   liquidity=${liquidity}`);
   console.log(`price        1 ${tokenMeta.symbol} ≈ ${trimNum(formatUnits(priceHuman, 36))} ${quoteMeta.symbol}`);
+  if (mcap !== null) {
+    console.log(`supply       ${trimNum(formatUnits(supply, tokenMeta.decimals))} ${tokenMeta.symbol}`);
+    console.log(`market cap   ${trimNum(formatUnits(mcap, 36), 2)} ${quoteMeta.symbol}`);
+  }
 }
 
 // ---------------------------------------------------------------------------

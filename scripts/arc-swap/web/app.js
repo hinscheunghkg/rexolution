@@ -52,6 +52,7 @@ const erc20Abi = parseAbi([
   'function decimals() view returns (uint8)',
   'function symbol() view returns (string)',
   'function balanceOf(address) view returns (uint256)',
+  'function totalSupply() view returns (uint256)',
   'function allowance(address owner, address spender) view returns (uint256)',
   'function approve(address spender, uint256 amount) returns (bool)',
 ]);
@@ -98,6 +99,16 @@ function trimNum(str, sig = 6) {
   return cut ? `${int}.${cut}` : int;
 }
 const fmt = (v, dec, sig) => trimNum(formatUnits(v, dec), sig);
+// USDC amount in 1e36 fixed point → "$1.23M" style
+function usd(v36) {
+  const n = Number(formatUnits(v36, 36));
+  if (!isFinite(n)) return '$?';
+  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
+  return `$${n.toFixed(2)}`;
+}
 
 function explainError(err) {
   if (err instanceof BaseError) {
@@ -297,16 +308,20 @@ async function findPool() {
     writeCache(token, key);
     const id = poolIdOf(key);
     const quote = lower(key.currency0) === lower(token) ? key.currency1 : key.currency0;
-    const [tokenMeta, quoteMeta, slot0, liquidity] = await Promise.all([
+    const [tokenMeta, quoteMeta, slot0, liquidity, supply] = await Promise.all([
       currencyMeta(token), currencyMeta(quote),
       S.publicClient.readContract({ address: ADDR.stateView, abi: stateViewAbi, functionName: 'getSlot0', args: [id] }),
       S.publicClient.readContract({ address: ADDR.stateView, abi: stateViewAbi, functionName: 'getLiquidity', args: [id] }),
+      S.publicClient.readContract({ address: token, abi: erc20Abi, functionName: 'totalSupply' }).catch(() => null),
     ]);
     const price = priceOf(key, token, slot0[0], tokenMeta.decimals, quoteMeta.decimals);
-    S.pool = { key, id, quote, tokenMeta, quoteMeta, liquidity, price, lpFee: slot0[3] };
+    // market cap (USDC, 1e36 fixed) = price × totalSupply / 10^tokenDecimals
+    const mcap = supply === null ? null : (price * supply) / 10n ** BigInt(tokenMeta.decimals);
+    S.pool = { key, id, quote, tokenMeta, quoteMeta, liquidity, price, mcap, supply, lpFee: slot0[3] };
     $('poolBox').hidden = false;
     $('poolSymbol').textContent = tokenMeta.symbol;
     $('poolPrice').textContent = `1 ${tokenMeta.symbol} ≈ ${trimNum(formatUnits(price, 36))} USDC`;
+    $('poolMcap').textContent = mcap === null ? 'market cap n/a' : `market cap ${usd(mcap)}`;
     $('poolFee').textContent = `${(Number(slot0[3]) / 10000).toFixed(2)}% pool fee` + (isNative(key.hooks) ? '' : ` · hook ${short(key.hooks)}`);
     $('poolQuoteKind').textContent = quoteMeta.native ? 'native USDC' : 'USDC (ERC-20)';
     $('poolId').textContent = id;
