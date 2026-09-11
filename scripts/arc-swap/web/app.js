@@ -129,7 +129,7 @@ function writeCache(token, key) { try { localStorage.setItem(cacheKey(token), JS
 // ---------------------------------------------------------------------------
 const S = {
   provider: null, publicClient: null, walletClient: null, account: null,
-  token: null, pool: null, side: 'buy', quote: null, busy: false,
+  token: null, pool: null, side: 'buy', quote: null, busy: false, connecting: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -211,21 +211,47 @@ async function ensureArcChain() {
   if (after !== arc.id) throw new Error(`Wallet is on chain ${after}, switch it to Arc (5042).`);
 }
 
+// Run a wallet request, and if it takes long, tell the user where the popup is.
+async function withWalletHint(label, promise) {
+  const t = setTimeout(() => setStatus(`${label} Still waiting: click your wallet's extension icon, unlock it, and approve the pending request there.`, 'err'), 8000);
+  try { return await promise; } finally { clearTimeout(t); }
+}
+
+function providerName(p) {
+  const a = announced.find((d) => d.provider === p);
+  return a?.info?.name ?? (p.isRabby ? 'Rabby' : p.isMetaMask ? 'MetaMask' : p.isCoinbaseWallet ? 'Coinbase Wallet' : 'your wallet');
+}
+
 async function connect() {
+  if (S.connecting) { setStatus('Already connecting. Check your wallet extension for a pending request.', 'err'); return; }
+  S.connecting = true;
   setStatus('Looking for a wallet…');
   const provider = await waitForProvider();
   if (!provider) {
     setStatus(noWalletHelp(), 'err');
+    S.connecting = false;
     return;
   }
+  const name = providerName(provider);
   try {
     S.provider = provider;
     const transport = custom(provider);
     S.publicClient = createPublicClient({ chain: arc, transport });
-    const [address] = await provider.request({ method: 'eth_requestAccounts' });
-    S.account = getAddress(address);
+    setStatus(`Found ${name}. Approve the connection in its popup…`);
+    let accounts;
+    try {
+      accounts = await withWalletHint(`${name} is asking you to connect.`, provider.request({ method: 'eth_requestAccounts' }));
+    } catch (e) {
+      if (e?.code === -32002 || /already pending/i.test(e?.message ?? '')) {
+        throw new Error(`${name} already has a connection request waiting. Click the extension icon and approve it, then press Connect again.`);
+      }
+      throw e;
+    }
+    if (!accounts?.length) throw new Error(`${name} returned no account. Unlock it and try again.`);
+    S.account = getAddress(accounts[0]);
     S.walletClient = createWalletClient({ chain: arc, transport, account: S.account });
-    await ensureArcChain();
+    setStatus(`Connected ${short(S.account)}. Switching ${name} to Arc… approve in the popup if asked.`);
+    await withWalletHint(`${name} is asking you to switch to Arc.`, ensureArcChain());
     $('connectBtn').textContent = short(S.account);
     $('connectBtn').classList.add('connected');
     setStatus('Connected to Arc.', 'ok');
@@ -235,6 +261,8 @@ async function connect() {
     if (S.token && !S.pool) await findPool();
   } catch (e) {
     setStatus(explainError(e), 'err');
+  } finally {
+    S.connecting = false;
   }
 }
 
