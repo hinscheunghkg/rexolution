@@ -6,6 +6,12 @@ on-chain flow.
 
 ## Web page (easiest)
 
+**Hosted copy (no install):** open
+`https://raw.githack.com/hinscheunghkg/rexolution/claude/pensive-wright-d184i8/scripts/arc-swap/swap.html`
+in the browser that has MetaMask or Rabby. It is served over https straight from
+this repo, so the wallet treats it like any normal dapp. Do not use `file://`:
+MetaMask ignores connection requests from local files, so no popup ever appears.
+
 Wallet extensions only inject into pages served over http(s) or localhost, not
 into file previews and often not into `file://` pages. So run the tiny local server:
 

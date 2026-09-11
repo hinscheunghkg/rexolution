@@ -237,6 +237,9 @@ async function connect() {
     S.provider = provider;
     const transport = custom(provider);
     S.publicClient = createPublicClient({ chain: arc, transport });
+    if (location.protocol === 'file:') {
+      log(`<b>Heads up:</b> ${name} usually ignores connection requests from file:// pages, so no popup may appear. Open this page over http instead — see the README for the hosted link or run <code>npm run web</code>.`, 'err');
+    }
     setStatus(`Found ${name}. Approve the connection in its popup…`);
     let accounts;
     try {
