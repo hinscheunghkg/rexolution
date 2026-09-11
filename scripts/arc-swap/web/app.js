@@ -6,7 +6,9 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
+  http,
   defineChain,
+  decodeErrorResult,
   encodeAbiParameters,
   encodePacked,
   keccak256,
@@ -72,7 +74,64 @@ const quoterAbi = parseAbi([
   'struct QuoteExactSingleParams { PoolKey poolKey; bool zeroForOne; uint128 exactAmount; bytes hookData; }',
   'function quoteExactInputSingle(QuoteExactSingleParams params) returns (uint256 amountOut, uint256 gasEstimate)',
 ]);
-const universalRouterAbi = parseAbi(['function execute(bytes commands, bytes[] inputs, uint256 deadline) payable']);
+const knownErrors = [
+  // Universal Router / V4Router
+  'error ExecutionFailed(uint256 commandIndex, bytes message)',
+  'error TransactionDeadlinePassed()',
+  'error V4TooLittleReceived(uint256 minAmountOutReceived, uint256 amountReceived)',
+  'error V4TooMuchRequested(uint256 maxAmountInRequested, uint256 amountRequested)',
+  'error DeltaNotPositive(address currency)',
+  'error DeltaNotNegative(address currency)',
+  'error InputLengthMismatch()',
+  'error InvalidCommandType(uint256 commandType)',
+  'error ContractLocked()',
+  'error InsufficientBalance()',
+  'error NotPoolManager()',
+  // Permit2
+  'error AllowanceExpired(uint256 deadline)',
+  'error InsufficientAllowance(uint256 amount)',
+  'error InvalidNonce()',
+  // PoolManager / Hooks / CustomRevert
+  'error CurrencyNotSettled()',
+  'error ManagerLocked()',
+  'error PoolNotInitialized()',
+  'error SwapAmountCannotBeZero()',
+  'error PriceLimitAlreadyExceeded(uint160 sqrtPriceCurrentX96, uint160 sqrtPriceLimitX96)',
+  'error PriceLimitOutOfBounds(uint160 sqrtPriceLimitX96)',
+  'error HookCallFailed()',
+  'error InvalidHookResponse()',
+  'error HookDeltaExceedsSwapAmount()',
+  'error HookAddressNotValid(address hooks)',
+  'error WrappedError(address target, bytes4 selector, bytes reason, bytes details)',
+  'error Wrap__FailedHookCall(address hook, bytes revertReason)',
+  // common ERC-20 / hook style reasons
+  'error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)',
+  'error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)',
+  'error TransferFromFailed()',
+  'error SafeTransferFromFailed()',
+];
+const universalRouterAbi = parseAbi(['function execute(bytes commands, bytes[] inputs, uint256 deadline) payable', ...knownErrors]);
+const errorAbi = parseAbi(knownErrors);
+
+// Turn raw revert bytes into something readable, unwrapping nested reasons.
+function describeRevert(data, depth = 0) {
+  if (!data || data === '0x') return depth ? '(no data)' : 'no revert data — the wallet RPC hid the reason; set an Arc RPC URL under Advanced and retry so the page can read it';
+  try {
+    const d = decodeErrorResult({ abi: errorAbi, data });
+    const args = d.args ?? [];
+    const show = (a) => (typeof a === 'bigint' ? a.toString() : typeof a === 'string' && a.length > 66 ? `${a.slice(0, 10)}…` : String(a));
+    let out = `${d.errorName}(${args.map(show).join(', ')})`;
+    if (d.errorName === 'ExecutionFailed') out = `command ${args[0]} failed → ${describeRevert(args[1], depth + 1)}`;
+    if (d.errorName === 'WrappedError') out = `${short(args[0])} reverted → ${describeRevert(args[2], depth + 1)}`;
+    if (d.errorName === 'Wrap__FailedHookCall') out = `hook ${short(args[0])} reverted → ${describeRevert(args[1], depth + 1)}`;
+    return out;
+  } catch {}
+  try {
+    const d = decodeErrorResult({ abi: [{ type: 'error', name: 'Error', inputs: [{ type: 'string' }] }, { type: 'error', name: 'Panic', inputs: [{ type: 'uint256' }] }], data });
+    return `${d.errorName}(${String(d.args?.[0])})`;
+  } catch {}
+  return `unknown selector ${data.slice(0, 10)} (${data.length / 2 - 1} bytes)`;
+}
 const poolKeyAbiParams = [{
   type: 'tuple', name: 'poolKey',
   components: [
@@ -110,10 +169,22 @@ function usd(v36) {
   return `$${n.toFixed(2)}`;
 }
 
+function revertData(err) {
+  let found = null;
+  err?.walk?.((e) => { if (!found && typeof e?.data === 'string' && e.data.startsWith('0x') && e.data.length > 2) found = e.data; return false; });
+  if (!found && typeof err?.data === 'string') found = err.data;
+  if (!found && typeof err?.data?.data === 'string') found = err.data.data;
+  if (!found && typeof err?.cause?.data === 'string') found = err.cause.data;
+  return found;
+}
+
 function explainError(err) {
   if (err instanceof BaseError) {
     const revert = err.walk((e) => e instanceof ContractFunctionRevertedError);
-    if (revert?.data) return `${revert.data.errorName}(${(revert.data.args ?? []).join(', ')})`;
+    if (revert?.data?.errorName) return describeRevert(revert.raw ?? revertData(err)) || `${revert.data.errorName}(${(revert.data.args ?? []).join(', ')})`;
+    const raw = revertData(err);
+    if (raw) return `reverted: ${describeRevert(raw)}`;
+    if (/reverted|execution reverted/i.test(err.shortMessage ?? '')) return `reverted: ${describeRevert(null)}`;
     return err.shortMessage ?? err.message;
   }
   if (err?.code === 4001 || /rejected/i.test(err?.message ?? '')) return 'You rejected the request in your wallet.';
@@ -251,6 +322,18 @@ function providerName(p) {
   return listProviders().find((w) => w.provider === p)?.name ?? 'your wallet';
 }
 
+// Reads and simulations go through a direct RPC when one is set (wallets hide revert
+// reasons and rate-limit log scans); transactions always go through the wallet.
+const RPC_PREF = 'arc-swap:rpc';
+function readClient() {
+  const url = $('rpcUrl').value.trim();
+  if (url && /^https?:\/\//.test(url)) {
+    if (S.readUrl !== url) { S.readClient = createPublicClient({ chain: arc, transport: http(url, { batch: false }) }); S.readUrl = url; try { localStorage.setItem(RPC_PREF, url); } catch {} }
+    return S.readClient;
+  }
+  return S.publicClient;
+}
+
 async function connect() {
   if (S.connecting) { setStatus('Already connecting. Check your wallet extension for a pending request.', 'err'); return; }
   S.connecting = true;
@@ -312,7 +395,7 @@ async function connect() {
 // ---------------------------------------------------------------------------
 async function currencyMeta(currency) {
   if (isNative(currency)) return { symbol: 'USDC', decimals: 18, native: true };
-  const c = S.publicClient;
+  const c = readClient();
   const [decimals, symbol] = await Promise.all([
     c.readContract({ address: currency, abi: erc20Abi, functionName: 'decimals' }),
     c.readContract({ address: currency, abi: erc20Abi, functionName: 'symbol' }).catch(() => 'TOKEN'),
@@ -321,8 +404,8 @@ async function currencyMeta(currency) {
 }
 
 async function balanceOf(currency, owner) {
-  if (isNative(currency)) return S.publicClient.getBalance({ address: owner });
-  return S.publicClient.readContract({ address: currency, abi: erc20Abi, functionName: 'balanceOf', args: [owner] });
+  if (isNative(currency)) return readClient().getBalance({ address: owner });
+  return readClient().readContract({ address: currency, abi: erc20Abi, functionName: 'balanceOf', args: [owner] });
 }
 
 function manualKey(token) {
@@ -335,7 +418,7 @@ function manualKey(token) {
 }
 
 async function discoverKey(token) {
-  const c = S.publicClient;
+  const c = readClient();
   const latest = await c.getBlockNumber();
   const fromInput = $('fromBlock').value.trim();
   const floor = fromInput ? BigInt(fromInput) : ROUTER_CREATION_BLOCK;
@@ -370,7 +453,7 @@ async function findPool() {
     for (let attempt = 0; attempt < 2 && !verified; attempt++) {
       if (!key) key = await discoverKey(token);
       const id = poolIdOf(key);
-      const [slot0] = await S.publicClient.readContract({ address: ADDR.stateView, abi: stateViewAbi, functionName: 'getSlot0', args: [id] });
+      const [slot0] = await readClient().readContract({ address: ADDR.stateView, abi: stateViewAbi, functionName: 'getSlot0', args: [id] });
       if (slot0 !== 0n) verified = true; else key = null; // stale cache → rescan
     }
     if (!verified) throw new Error('Pool key did not resolve to an initialized pool.');
@@ -379,9 +462,9 @@ async function findPool() {
     const quote = lower(key.currency0) === lower(token) ? key.currency1 : key.currency0;
     const [tokenMeta, quoteMeta, slot0, liquidity, supply] = await Promise.all([
       currencyMeta(token), currencyMeta(quote),
-      S.publicClient.readContract({ address: ADDR.stateView, abi: stateViewAbi, functionName: 'getSlot0', args: [id] }),
-      S.publicClient.readContract({ address: ADDR.stateView, abi: stateViewAbi, functionName: 'getLiquidity', args: [id] }),
-      S.publicClient.readContract({ address: token, abi: erc20Abi, functionName: 'totalSupply' }).catch(() => null),
+      readClient().readContract({ address: ADDR.stateView, abi: stateViewAbi, functionName: 'getSlot0', args: [id] }),
+      readClient().readContract({ address: ADDR.stateView, abi: stateViewAbi, functionName: 'getLiquidity', args: [id] }),
+      readClient().readContract({ address: token, abi: erc20Abi, functionName: 'totalSupply' }).catch(() => null),
     ]);
     const price = priceOf(key, token, slot0[0], tokenMeta.decimals, quoteMeta.decimals);
     // market cap (USDC, 1e36 fixed) = price × totalSupply / 10^tokenDecimals
@@ -419,7 +502,7 @@ function priceOf(key, token, sqrtPriceX96, tokenDec, quoteDec) {
 // ---------------------------------------------------------------------------
 async function refreshBalances() {
   if (!S.account) return;
-  const gas = await S.publicClient.getBalance({ address: S.account });
+  const gas = await readClient().getBalance({ address: S.account });
   $('gasBal').textContent = `${fmt(gas, 18, 4)} USDC for gas`;
   if (!S.pool) return;
   const { quote, quoteMeta, tokenMeta } = S.pool;
@@ -456,7 +539,7 @@ async function requote() {
   try { amountIn = parseUnits(amt, inMeta.decimals); } catch { setStatus('Invalid amount.', 'err'); return; }
   const slippagePct = Number($('slippage').value || 1);
   try {
-    const { result } = await S.publicClient.simulateContract({
+    const { result } = await readClient().simulateContract({
       address: ADDR.v4Quoter, abi: quoterAbi, functionName: 'quoteExactInputSingle',
       args: [{ poolKey: S.pool.key, zeroForOne, exactAmount: amountIn, hookData: hookData() }],
     });
@@ -505,11 +588,11 @@ async function sendAndWait(label, request) {
 async function ensureApprovals(currency, amount) {
   if (isNative(currency)) return;
   const owner = S.account;
-  const erc20Allowance = await S.publicClient.readContract({ address: currency, abi: erc20Abi, functionName: 'allowance', args: [owner, ADDR.permit2] });
+  const erc20Allowance = await readClient().readContract({ address: currency, abi: erc20Abi, functionName: 'allowance', args: [owner, ADDR.permit2] });
   if (erc20Allowance < amount) {
     await sendAndWait('Approve token', { address: currency, abi: erc20Abi, functionName: 'approve', args: [ADDR.permit2, maxUint256], account: S.account });
   }
-  const [p2Amount, p2Exp] = await S.publicClient.readContract({ address: ADDR.permit2, abi: permit2Abi, functionName: 'allowance', args: [owner, currency, ADDR.universalRouter] });
+  const [p2Amount, p2Exp] = await readClient().readContract({ address: ADDR.permit2, abi: permit2Abi, functionName: 'allowance', args: [owner, currency, ADDR.universalRouter] });
   const now = Math.floor(Date.now() / 1000);
   if (p2Amount < amount || p2Exp <= now) {
     await sendAndWait('Approve router', { address: ADDR.permit2, abi: permit2Abi, functionName: 'approve', args: [currency, ADDR.universalRouter, maxUint160, now + 30 * 24 * 3600], account: S.account });
@@ -528,7 +611,8 @@ async function swap() {
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 180);
     const value = isNative(currencyIn) ? amountIn : 0n;
     setStatus('Simulating swap…');
-    const { request } = await S.publicClient.simulateContract({
+    S.lastSwap = { currencyIn, amountIn, minOut, zeroForOne, deadline };
+    const { request } = await readClient().simulateContract({
       address: ADDR.universalRouter, abi: universalRouterAbi, functionName: 'execute', args: [commands, inputs, deadline], value, account: S.account,
     });
     const hash = await sendAndWait('Swap', request);
@@ -542,7 +626,37 @@ async function swap() {
     const msg = explainError(e);
     log(`Swap failed: ${msg}`, 'err');
     setStatus(msg, 'err');
+    if (S.lastSwap) diagnose(S.lastSwap).catch((d) => log(`diagnosis failed: ${explainError(d)}`, 'err'));
   } finally { setBusy(false); }
+}
+
+// After a failed swap: check every precondition and say which one is off.
+async function diagnose({ currencyIn, amountIn, minOut, zeroForOne, deadline }) {
+  const c = readClient();
+  const { inMeta, outMeta } = sideInfo();
+  const lines = [];
+  const block = await c.getBlock({ blockTag: 'latest' });
+  const skew = Number(deadline) - Number(block.timestamp);
+  lines.push(`chain time ${new Date(Number(block.timestamp) * 1000).toISOString().slice(11, 19)} UTC, deadline ${skew >= 0 ? `in ${skew}s` : `PASSED by ${-skew}s — your computer clock is behind the chain`}`);
+  const bal = await balanceOf(currencyIn, S.account);
+  lines.push(`${inMeta.symbol} balance ${fmt(bal, inMeta.decimals)} vs needed ${fmt(amountIn, inMeta.decimals)} ${bal >= amountIn ? 'ok' : 'INSUFFICIENT'}`);
+  if (!isNative(currencyIn)) {
+    const a1 = await c.readContract({ address: currencyIn, abi: erc20Abi, functionName: 'allowance', args: [S.account, ADDR.permit2] });
+    const [a2, exp] = await c.readContract({ address: ADDR.permit2, abi: permit2Abi, functionName: 'allowance', args: [S.account, currencyIn, ADDR.universalRouter] });
+    lines.push(`token→Permit2 allowance ${a1 >= amountIn ? 'ok' : 'MISSING'} (${a1})`);
+    lines.push(`Permit2→router allowance ${a2 >= amountIn && Number(exp) > Number(block.timestamp) ? 'ok' : 'MISSING/EXPIRED'} (${a2}, exp ${exp})`);
+  }
+  try {
+    const { result } = await c.simulateContract({ address: ADDR.v4Quoter, abi: quoterAbi, functionName: 'quoteExactInputSingle', args: [{ poolKey: S.pool.key, zeroForOne, exactAmount: amountIn, hookData: hookData() }] });
+    lines.push(`re-quote ${fmt(result[0], outMeta.decimals)} ${outMeta.symbol} (min ${fmt(minOut, outMeta.decimals)}) ${result[0] >= minOut ? 'ok' : 'BELOW MIN — raise slippage'}`);
+  } catch (qe) { lines.push(`re-quote FAILED: ${explainError(qe)}`); }
+  // same swap with no minimum: isolates slippage from everything else
+  try {
+    const { commands, inputs } = encodeSwap({ key: S.pool.key, zeroForOne, amountIn, minOut: 0n });
+    await c.simulateContract({ address: ADDR.universalRouter, abi: universalRouterAbi, functionName: 'execute', args: [commands, inputs, BigInt(Number(block.timestamp) + 600)], value: isNative(currencyIn) ? amountIn : 0n, account: S.account });
+    lines.push('swap with minOut=0 and fresh deadline: OK → the failure is slippage or the deadline');
+  } catch (se) { lines.push(`swap with minOut=0 still fails: ${explainError(se)}`); }
+  log(`<b>Diagnosis</b><br>${lines.map((l) => `• ${l}`).join('<br>')}`, 'info');
 }
 
 // ---------------------------------------------------------------------------
@@ -576,6 +690,7 @@ function init() {
     });
   }
   $('advToggle').addEventListener('click', () => { $('adv').hidden = !$('adv').hidden; });
+  try { const saved = localStorage.getItem(RPC_PREF); if (saved && !$('rpcUrl').value) $('rpcUrl').value = saved; } catch {}
   const params = new URLSearchParams(location.search);
   if (params.get('token')) $('token').value = params.get('token');
   setStatus('Connect your wallet to start.');

@@ -1,7 +1,7 @@
 // Minimal Arc-like JSON-RPC mock to exercise swap.mjs and swap.html offline.
 // Run: node test/mock-rpc.mjs   (listens on :8545, chain id 5042)
 import http from 'node:http';
-import { encodeAbiParameters, keccak256, toHex, pad, encodeEventTopics, parseAbi, decodeFunctionData, decodeAbiParameters, toFunctionSelector } from 'viem';
+import { encodeAbiParameters, keccak256, toHex, pad, encodeEventTopics, parseAbi, decodeFunctionData, decodeAbiParameters, toFunctionSelector, encodeErrorResult } from 'viem';
 
 const TOKEN = '0x1111111111111111111111111111111111111111';
 const USDC = '0x3600000000000000000000000000000000000000';
@@ -58,15 +58,27 @@ function ethCall({ to, data, value }) {
     // pretend 1 USDC (1e6) buys 1000 MEME (1e21): amountOut = amountIn * 1e15
     return enc(['uint256', 'uint256'], [p[2] * 10n ** 15n, 150000n]);
   }
-  if (to === ROUTER && s === S.execute) { seenExecute = { data, value }; return '0x'; }
+  if (to === ROUTER && s === S.execute) {
+    seenExecute = { data, value };
+    // MOCK_REVERT=slippage makes the router revert like a real V4TooLittleReceived, wrapped in ExecutionFailed
+    if (process.env.MOCK_REVERT === 'slippage') {
+      const inner = encodeErrorResult({ abi: parseAbi(['error V4TooLittleReceived(uint256 minAmountOutReceived, uint256 amountReceived)']), errorName: 'V4TooLittleReceived', args: [24750n * 10n ** 18n, 24000n * 10n ** 18n] });
+      const outer = encodeErrorResult({ abi: parseAbi(['error ExecutionFailed(uint256 commandIndex, bytes message)']), errorName: 'ExecutionFailed', args: [0n, inner] });
+      throw Object.assign(new Error('execution reverted'), { code: 3, data: outer });
+    }
+    return '0x';
+  }
   throw new Error(`unhandled call to=${to} sel=${s}`);
 }
 
 const server = http.createServer((req, res) => {
+  res.setHeader('access-control-allow-origin', '*');
+  res.setHeader('access-control-allow-headers', 'content-type');
+  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   let body = ''; req.on('data', (c) => (body += c)); req.on('end', () => {
     const reqs = JSON.parse(body); const batch = Array.isArray(reqs); const out = (batch ? reqs : [reqs]).map((r) => {
       try { return { jsonrpc: '2.0', id: r.id, result: handle(r) }; }
-      catch (e) { return { jsonrpc: '2.0', id: r.id, error: { code: -32000, message: e.message } }; }
+      catch (e) { return { jsonrpc: '2.0', id: r.id, error: { code: e.code ?? -32000, message: e.message, ...(e.data ? { data: e.data } : {}) } }; }
     });
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(batch ? out : out[0]));
   });
@@ -104,4 +116,5 @@ function handle({ method, params }) {
     default: throw new Error('unsupported ' + method);
   }
 }
-server.listen(8545, () => console.log('mock rpc on :8545, poolId', poolId));
+const PORT = Number(process.env.PORT ?? 8545);
+server.listen(PORT, () => console.log(`mock rpc on :${PORT}, poolId`, poolId));
