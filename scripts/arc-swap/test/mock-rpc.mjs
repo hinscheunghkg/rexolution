@@ -5,14 +5,16 @@ import { encodeAbiParameters, keccak256, toHex, pad, encodeEventTopics, parseAbi
 
 const TOKEN = '0x1111111111111111111111111111111111111111';
 const USDC = '0x3600000000000000000000000000000000000000';
-const HOOK = '0x2222222222222222222222222222222222222222';
+const HOOK = (process.env.MOCK_HOOK ?? '0x2222222222222222222222222222222222222222').toLowerCase();
+const O1_ROUTER = '0xa130577e3fcd1775e6ae51c89aa5d0d4c586484c';
+const O1_PROXY = '0x0cf929afcfe846feea4b4487c4d44d4c36abb498';
 const POOL_MANAGER = '0x8366a39cc670b4001a1121b8f6a443a643e40951';
 const STATE_VIEW = '0xf3334192d15450cdd385c8b70e03f9a6bd9e673b';
 const QUOTER = '0x8dc178efb8111bb0973dd9d722ebeff267c98f94';
 const ROUTER = '0x4fca4a51ab4f23a7447b3284fbd7d73289a89fb1';
 const PERMIT2 = '0x000000000022d473030f116ddee9f6b43ac78ba3';
-const LATEST = 2_050_000n;
-const INIT_BLOCK = 2_040_123n;
+const LATEST = 20_400_000n;
+const INIT_BLOCK = 20_369_000n;
 
 const key = { currency0: TOKEN, currency1: USDC, fee: 10000, tickSpacing: 200, hooks: HOOK };
 const poolKeyParams = [{ type: 'tuple', components: [
@@ -48,7 +50,7 @@ function ethCall({ to, data, value }) {
   if (to === PERMIT2 && s === S.p2TransferFrom) return '0x';
   if (to === STATE_VIEW) {
     const id = data.slice(10, 74);
-    if (id !== poolId.slice(2)) throw new Error('unknown poolId ' + id);
+    if (id !== poolId.slice(2)) return enc(['uint160', 'int24', 'uint24', 'uint24'], [0n, 0, 0, 0]).slice(0, s === S.getSlot0 ? undefined : 66); // unknown pool → zeros, like StateView
     if (s === S.getSlot0) return enc(['uint160', 'int24', 'uint24', 'uint24'], [sqrtPriceX96, -138163, 0, 10000]);
     if (s === S.getLiquidity) return enc(['uint128'], [10n ** 24n]);
   }
@@ -60,6 +62,7 @@ function ethCall({ to, data, value }) {
     // pretend 1 USDC (1e6) buys 1000 MEME (1e21): amountOut = amountIn * 1e15
     return enc(['uint256', 'uint256'], [p[2] * 10n ** 15n, 150000n]);
   }
+  if (to === O1_ROUTER) { seenExecute = { data, value, o1: true }; return '0x'; }
   if (to === ROUTER && s === S.execute) {
     seenExecute = { data, value };
     // MOCK_REVERT=slippage makes the router revert like a real V4TooLittleReceived, wrapped in ExecutionFailed
@@ -90,7 +93,7 @@ function handle({ method, params }) {
   switch (method) {
     case 'eth_chainId': return '0x13b2';
     case 'eth_blockNumber': return toHex(LATEST);
-    case 'eth_getBalance': return toHex(5n * 10n ** 18n);
+    case 'eth_getBalance': return toHex(1000n * 10n ** 18n);
     case 'eth_call': return ethCall(params[0]);
     case 'eth_estimateGas': return '0x30000';
     case 'eth_gasPrice': return '0x4a817c800';

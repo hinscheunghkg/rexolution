@@ -24,6 +24,7 @@ import {
   BaseError,
   ContractFunctionRevertedError,
 } from 'viem';
+import { encodeBuyPayload, encodeSellPayload, encodeCalldata } from './o1route.js';
 
 // ---------------------------------------------------------------------------
 // Arc mainnet (5042) — Uniswap deployments (Uniswap/contracts deployments/5042.md)
@@ -45,6 +46,15 @@ const O1 = {
   launchBuyAdapter: '0xacA9150b1ecAeddEf5cF6a24f12b060049Cec06f',
   swapXRouter: '0x528154f6DE668988A2DD1B4db96F470716d0493B',
   startBlock: 20147782n, // "arc-mainnet-launchpad-v4-minimal starts at block 20147782"
+  // the router real trades go through (seen on Arcscan; the hook only accepts swaps from it)
+  router: '0xa130577E3fCd1775E6aE51C89AA5D0d4C586484c',
+  // contract sellers approve before selling (pulls the tokens for the router)
+  transferProxy: '0x0cf929afcfE846FeEA4B4487C4D44D4c36abb498',
+  feeBps: 100, // router keeps 1% of the USDC side
+};
+// Creator fee splits observed per token (20% of o1's 1% fee goes to the creator). Unknown tokens: none.
+const O1_SPLITS = {
+  '0xf80457274fa646c7a8e0942d48be703864ef3d01': [{ recipient: '0x9bf3151880d93000aae1b5a3adf5994f5866e193', shareBps: 2000 }],
 };
 const ROUTER_CREATION_BLOCK = O1.startBlock; // no o1 pool exists before the launchpad was deployed
 const CMD_V4_SWAP = 0x10;
@@ -493,13 +503,15 @@ async function findPool() {
     const price = priceOf(key, token, slot0[0], tokenMeta.decimals, quoteMeta.decimals);
     // market cap (USDC, 1e36 fixed) = price × totalSupply / 10^tokenDecimals
     const mcap = supply === null ? null : (price * supply) / 10n ** BigInt(tokenMeta.decimals);
-    S.pool = { key, id, quote, tokenMeta, quoteMeta, liquidity, price, mcap, supply, lpFee: slot0[3] };
+    const o1 = lower(key.hooks) === lower(O1.launchHook);
+    S.pool = { key, id, quote, tokenMeta, quoteMeta, liquidity, price, mcap, supply, lpFee: slot0[3], o1 };
     $('poolBox').hidden = false;
     $('poolSymbol').textContent = tokenMeta.symbol;
     $('poolPrice').textContent = `1 ${tokenMeta.symbol} ≈ ${trimNum(formatUnits(price, 36))} USDC`;
     $('poolMcap').textContent = mcap === null ? 'market cap n/a' : `market cap ${usd(mcap)}`;
     $('poolFee').textContent = `${(Number(slot0[3]) / 10000).toFixed(2)}% pool fee` + (isNative(key.hooks) ? '' : ` · hook ${short(key.hooks)}`);
     $('poolQuoteKind').textContent = quoteMeta.native ? 'native USDC' : 'USDC (ERC-20)';
+    $('poolRoute').textContent = o1 ? 'o1 launchpad pool → trades go through o1\'s router (1% fee, pays native USDC)' : 'standard v4 pool → Uniswap Universal Router';
     $('poolId').textContent = id;
     setStatus(`Pool found for ${tokenMeta.symbol}.`, 'ok');
     updateSideLabels();
@@ -532,15 +544,24 @@ async function refreshBalances() {
   const { quote, quoteMeta, tokenMeta } = S.pool;
   const [q, t] = await Promise.all([balanceOf(quote, S.account), balanceOf(S.token, S.account)]);
   S.pool.balances = { quote: q, token: t };
-  const inBal = S.side === 'buy' ? `${fmt(q, quoteMeta.decimals, 4)} USDC` : `${fmt(t, tokenMeta.decimals, 4)} ${tokenMeta.symbol}`;
+  if (S.pool.o1) S.pool.balances.native = gas;
+  const inBal = S.side === 'buy'
+    ? (S.pool.o1 ? `${fmt(gas, 18, 4)} USDC (native)` : `${fmt(q, quoteMeta.decimals, 4)} USDC`)
+    : `${fmt(t, tokenMeta.decimals, 4)} ${tokenMeta.symbol}`;
   $('inBal').textContent = `Balance: ${inBal}`;
 }
 
 function sideInfo() {
-  const { key, quote, tokenMeta, quoteMeta } = S.pool;
+  const { key, quote, tokenMeta, quoteMeta, o1 } = S.pool;
   const buying = S.side === 'buy';
   const currencyIn = buying ? quote : S.token, currencyOut = buying ? S.token : quote;
-  return { buying, currencyIn, currencyOut, inMeta: buying ? quoteMeta : tokenMeta, outMeta: buying ? tokenMeta : quoteMeta, zeroForOne: lower(currencyIn) === lower(key.currency0) };
+  const nativeUsdc = { symbol: 'USDC', decimals: 18, native: true };
+  return {
+    buying, currencyIn, currencyOut,
+    inMeta: buying ? (o1 ? nativeUsdc : quoteMeta) : tokenMeta,
+    outMeta: buying ? tokenMeta : (o1 ? nativeUsdc : quoteMeta),
+    zeroForOne: lower(currencyIn) === lower(key.currency0),
+  };
 }
 
 function updateSideLabels() {
@@ -559,22 +580,30 @@ async function requote() {
   const amt = $('amount').value.trim();
   if (!(Number(amt) > 0)) { $('quoteBox').hidden = true; return; }
   const { currencyIn, inMeta, outMeta, zeroForOne } = sideInfo();
+  const o1 = S.pool.o1;
   let amountIn;
   try { amountIn = parseUnits(amt, inMeta.decimals); } catch { setStatus('Invalid amount.', 'err'); return; }
   const slippagePct = Number($('slippage').value || 1);
   try {
+    // o1 router: 1% of the USDC side is taken before (buy) or after (sell) the pool swap
+    const poolIn = o1 && S.side === 'buy' ? amountIn - (amountIn * BigInt(O1.feeBps)) / 10000n : amountIn;
     const { result } = await readClient().simulateContract({
       address: ADDR.v4Quoter, abi: quoterAbi, functionName: 'quoteExactInputSingle',
-      args: [{ poolKey: S.pool.key, zeroForOne, exactAmount: amountIn, hookData: hookData() }],
+      args: [{ poolKey: S.pool.key, zeroForOne, exactAmount: poolIn, hookData: hookData() }],
     });
-    const amountOut = result[0];
+    let amountOut = result[0];
+    if (o1 && S.side === 'sell') amountOut = amountOut - (amountOut * BigInt(O1.feeBps)) / 10000n;
     const minOut = amountOut - (amountOut * BigInt(Math.round(slippagePct * 100))) / 10000n;
     S.quote = { amountIn, amountOut, minOut, currencyIn, zeroForOne };
     $('quoteBox').hidden = false;
     $('quoteOut').textContent = `${fmt(amountOut, outMeta.decimals)} ${outMeta.symbol}`;
-    $('quoteMin').textContent = `min ${fmt(minOut, outMeta.decimals)} ${outMeta.symbol} after ${slippagePct}% slippage`;
-    const bal = S.pool.balances ? (S.side === 'buy' ? S.pool.balances.quote : S.pool.balances.token) : null;
-    if (bal !== null && bal < amountIn) { setStatus(`Not enough ${inMeta.symbol} in your wallet.`, 'err'); return; }
+    $('quoteMin').textContent = o1
+      ? `after o1's 1% fee · o1's router has no minimum-output field, so the pool price at execution is what you get`
+      : `min ${fmt(minOut, outMeta.decimals)} ${outMeta.symbol} after ${slippagePct}% slippage`;
+    let bal = null;
+    if (S.pool.balances) bal = S.side === 'buy' ? (o1 ? S.pool.balances.native : S.pool.balances.quote) : S.pool.balances.token;
+    if (o1 && S.side === 'buy' && bal !== null) bal = bal > 10n ** 17n ? bal - 10n ** 17n : 0n; // keep 0.1 USDC for gas
+    if (bal !== null && bal < amountIn) { setStatus(`Not enough ${inMeta.symbol} in your wallet${o1 && S.side === 'buy' ? ' (native USDC, keeping 0.1 for gas)' : ''}.`, 'err'); return; }
     setStatus('Quote ready.', 'ok');
     $('swapBtn').disabled = S.busy;
   } catch (e) {
@@ -623,12 +652,54 @@ async function ensureApprovals(currency, amount) {
   }
 }
 
+// o1 launchpad pools: build the router's compact route and send it directly.
+async function swapO1() {
+  const { inMeta, outMeta, buying } = sideInfo();
+  const { amountIn, amountOut } = S.quote;
+  const c = readClient();
+  const pool = { fee: S.pool.key.fee, tickSpacing: S.pool.key.tickSpacing, hooks: S.pool.key.hooks };
+  const splits = O1_SPLITS[lower(S.token)] ?? [];
+  const payload = buying
+    ? encodeBuyPayload({ token: S.token, amountIn, pool, splits })
+    : encodeSellPayload({ token: S.token, amountIn, pool, splits });
+  const data = encodeCalldata(payload);
+  const value = buying ? amountIn : 0n;
+
+  if (!buying) {
+    const allowance = await c.readContract({ address: S.token, abi: erc20Abi, functionName: 'allowance', args: [S.account, O1.transferProxy] });
+    if (allowance < amountIn) {
+      await sendAndWait(`Approve ${inMeta.symbol} for o1`, { address: S.token, abi: erc20Abi, functionName: 'approve', args: [O1.transferProxy, maxUint256], account: S.account });
+    }
+  }
+
+  setStatus('Simulating through o1\'s router…');
+  S.lastO1 = { data, value };
+  try {
+    await c.call({ account: S.account, to: O1.router, data, value });
+  } catch (e) {
+    throw new Error(`o1 router simulation failed: ${explainError(e)}`);
+  }
+  setStatus('Swap: confirm in your wallet…');
+  const hash = await S.walletClient.sendTransaction({ account: S.account, to: O1.router, data, value, chain: arc });
+  log(`Swap sent ${txLink(hash)}`);
+  setStatus('Swap: waiting for confirmation…');
+  const r = await S.publicClient.waitForTransactionReceipt({ hash });
+  if (r.status !== 'success') throw new Error(`swap reverted on chain (${short(hash)})`);
+  const after = buying ? await balanceOf(S.token, S.account) : await c.getBalance({ address: S.account });
+  log(`<b>Swap confirmed</b> ${txLink(hash)} — ${fmt(amountIn, inMeta.decimals)} ${inMeta.symbol} → ≈ ${fmt(amountOut, outMeta.decimals)} ${outMeta.symbol} via o1's router. Balance now ${fmt(after, outMeta.decimals)} ${outMeta.symbol}.`, 'ok');
+  setStatus('Swap confirmed.', 'ok');
+  $('amount').value = '';
+  $('quoteBox').hidden = true; S.quote = null;
+  await refreshBalances();
+}
+
 async function swap() {
   if (!S.quote || S.busy) return;
   setBusy(true);
   const { inMeta, outMeta } = sideInfo();
   try {
     await ensureArcChain();
+    if (S.pool.o1) { await swapO1(); return; }
     const { amountIn, minOut, currencyIn, zeroForOne } = S.quote;
     await ensureApprovals(currencyIn, amountIn);
     const { commands, inputs } = encodeSwap({ key: S.pool.key, zeroForOne, amountIn, minOut });
@@ -650,7 +721,9 @@ async function swap() {
     const msg = explainError(e);
     log(`Swap failed: ${msg}`, 'err');
     setStatus(msg, 'err');
-    if (S.lastSwap) diagnose(S.lastSwap).catch((d) => log(`diagnosis failed: ${explainError(d)}`, 'err'));
+    if (S.pool?.o1) {
+      log(`o1 calldata that was simulated (to ${O1.router}, value ${S.lastO1?.value ?? 0n}):<br><code style="word-break:break-all;font-size:11px">${S.lastO1?.data ?? ''}</code>`, 'info');
+    } else if (S.lastSwap) diagnose(S.lastSwap).catch((d) => log(`diagnosis failed: ${explainError(d)}`, 'err'));
   } finally { setBusy(false); }
 }
 
@@ -712,7 +785,8 @@ function init() {
     if (!S.pool?.balances) return;
     const { inMeta } = sideInfo();
     let bal = S.side === 'buy' ? S.pool.balances.quote : S.pool.balances.token;
-    if (S.side === 'buy' && S.pool.quoteMeta.native) bal = bal > 10n ** 18n ? bal - 10n ** 18n : 0n; // leave 1 USDC for gas
+    if (S.side === 'buy' && S.pool.o1) bal = S.pool.balances.native ?? 0n;
+    if (S.side === 'buy' && (S.pool.quoteMeta.native || S.pool.o1)) bal = bal > 10n ** 18n ? bal - 10n ** 18n : 0n; // leave 1 USDC for gas
     $('amount').value = formatUnits(bal, inMeta.decimals);
     scheduleQuote();
   });
