@@ -6,17 +6,28 @@ on-chain flow.
 
 ## Web page (easiest)
 
-1. Open `swap.html` in Chrome, Brave or Firefox with MetaMask or Rabby installed.
-   Double-clicking the file works. If your wallet does not show up on a `file://`
-   page, serve it instead: `npx serve scripts/arc-swap` and open the printed URL.
-2. Click **Connect wallet**. The page switches your wallet to Arc (chain 5042). If
+Wallet extensions only inject into pages served over http(s) or localhost, not
+into file previews and often not into `file://` pages. So run the tiny local server:
+
+```bash
+cd scripts/arc-swap
+npm install
+npm run web          # prints http://localhost:8787/
+```
+
+Open that URL in the browser that has MetaMask or Rabby installed, then:
+
+1. Click **Connect wallet**. The page switches your wallet to Arc (chain 5042). If
    Arc is not in your wallet yet, open **Advanced**, paste an Arc RPC URL, and
    connect again so the page can add the network.
-3. Paste the token address and click **Find**. The page locates the token's
+2. Paste the token address and click **Find**. The page locates the token's
    Uniswap v4 pool and shows the price, fee and hook.
-4. Pick **Buy** or **Sell**, type an amount, and the quote appears. Click the
+3. Pick **Buy** or **Sell**, type an amount, and the quote appears. Click the
    button and confirm in your wallet. The first buy of a token asks for two
    approvals (token to Permit2, Permit2 to the router), then the swap.
+
+If you would rather double-click `swap.html`, Chrome needs the extension's
+"Allow access to file URLs" switch on (chrome://extensions → wallet → Details).
 
 The page is one self-contained file (viem is bundled in), talks to the chain only
 through your wallet, and never sees a private key. Rebuild it after editing

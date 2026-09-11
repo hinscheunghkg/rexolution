@@ -7,7 +7,8 @@
   "scripts": {
     "swap": "node --env-file=.env swap.mjs",
     "build:web": "node web/build.mjs",
-    "test:mock": "node test/mock-rpc.mjs"
+    "test:mock": "node test/mock-rpc.mjs",
+    "web": "node web/serve.mjs"
   },
   "engines": {
     "node": ">=20.6"

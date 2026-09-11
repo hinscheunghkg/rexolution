@@ -145,11 +145,41 @@ function txLink(hash) { return `<a href="${EXPLORER}/tx/${hash}" target="_blank"
 // ---------------------------------------------------------------------------
 // wallet
 // ---------------------------------------------------------------------------
+// Wallet discovery: EIP-6963 announcements (modern wallets) + legacy window.ethereum,
+// with a short wait because extensions often inject after DOMContentLoaded.
+const announced = [];
+window.addEventListener('eip6963:announceProvider', (e) => {
+  const d = e.detail; if (d?.provider && !announced.some((x) => x.provider === d.provider)) announced.push(d);
+});
+window.dispatchEvent(new Event('eip6963:requestProvider'));
+
 function findProvider() {
+  if (announced.length) {
+    const pick = announced.find((d) => /metamask|rabby/i.test(d.info?.name ?? '')) ?? announced[0];
+    return pick.provider;
+  }
   const eth = window.ethereum;
   if (!eth) return null;
   if (Array.isArray(eth.providers) && eth.providers.length) return eth.providers.find((p) => p.isMetaMask) ?? eth.providers[0];
   return eth;
+}
+
+async function waitForProvider(ms = 2500) {
+  const t0 = Date.now();
+  window.dispatchEvent(new Event('eip6963:requestProvider'));
+  while (Date.now() - t0 < ms) {
+    const p = findProvider(); if (p) return p;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return findProvider();
+}
+
+function noWalletHelp() {
+  const isFile = location.protocol === 'file:';
+  const framed = window.top !== window.self;
+  if (framed) return 'This page is inside a preview frame, so wallet extensions cannot reach it. Save the file and open it directly in Chrome, Brave or Firefox.';
+  if (isFile) return 'No wallet injected on this file:// page. Either run "npm run web" and open http://localhost:8787, or in Chrome open chrome://extensions → your wallet → Details → enable "Allow access to file URLs", then reload.';
+  return 'No wallet extension detected. Install MetaMask or Rabby in this browser, unlock it, then reload this page.';
 }
 
 async function ensureArcChain() {
@@ -171,9 +201,10 @@ async function ensureArcChain() {
 }
 
 async function connect() {
-  const provider = findProvider();
+  setStatus('Looking for a wallet…');
+  const provider = await waitForProvider();
   if (!provider) {
-    setStatus('No wallet found. Install MetaMask or Rabby, then reload this page.', 'err');
+    setStatus(noWalletHelp(), 'err');
     return;
   }
   try {
@@ -460,7 +491,7 @@ function init() {
   $('advToggle').addEventListener('click', () => { $('adv').hidden = !$('adv').hidden; });
   const params = new URLSearchParams(location.search);
   if (params.get('token')) $('token').value = params.get('token');
-  if (!findProvider()) setStatus('No wallet detected. Install MetaMask or Rabby, then reload.', 'err');
-  else setStatus('Connect your wallet to start.');
+  setStatus('Connect your wallet to start.');
+  waitForProvider(3000).then((p) => { if (!p) setStatus(noWalletHelp(), 'err'); });
 }
 document.addEventListener('DOMContentLoaded', init);
