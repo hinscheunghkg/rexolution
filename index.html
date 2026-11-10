@@ -569,8 +569,8 @@ const TEE_PATH = "M300 22 Q380 70 460 22 L560 40 L740 170 L680 290 L640 262 L640
 
 /* ---------- state ---------- */
 const state = {
-  comp: [ {id:"tank",x:66,y:41}, {id:"sun",x:8,y:7}, {id:"cloud",x:46,y:10}, {id:"plant",x:34,y:42} ],   // lead first
-  serial: 83, colour: "concrete", size: "M", boxes: 0
+  comp: [ {id:"night",x:1,y:1} ],   // Rooftop at Night leads the landing page
+  serial: 83, pieceNo: 7, colour: "concrete", size: "M", boxes: 0
 };
 try {
   const saved = JSON.parse(localStorage.getItem("statch.s01.order") || "null");
@@ -782,7 +782,7 @@ function bake(T){
   return cv;
 }
 /* hook side of a patch; the serial is printed mirrored so it reads right from behind */
-function backCanvas(T, serial){
+function backCanvas(T, info){
   const { W, H, R, b } = T, K = mk(W, H), k = K.getContext("2d");
   k.fillStyle = EDGE; k.fillRect(0, 0, W, H);
   const I = mk(W, H), i = I.getContext("2d");
@@ -792,18 +792,87 @@ function backCanvas(T, serial){
   i.lineWidth = R*.07; i.strokeStyle = "rgba(150,153,160,.16)"; i.stroke(hooks);
   i.globalCompositeOperation = "destination-in"; i.drawImage(T.fillM, 0, 0, W, H);
   k.drawImage(I, 0, 0); k.drawImage(T.band, 0, 0);
-  if (serial != null) {
-    const X = mk(W, H), x = X.getContext("2d"), [cx, cy] = T.cpx;
-    const big = Math.min(b.w, b.h*1.25)*.34*R, num = String(serial).padStart(3, "0");
-    const total = b.full ? "/050" : "/482", y1 = cy + big*.035;
-    x.textAlign = "center"; x.textBaseline = "alphabetic";
-    x.font = "900 "+big+"px Archivo, sans-serif"; x.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#e4561f";
-    x.fillText(num, cx, y1);
-    x.font = "800 "+(big*.3)+"px Archivo, sans-serif"; x.fillStyle = "#e9ecef"; x.fillText(total, cx, y1 + big*.38);
-    x.font = "600 "+(big*.16)+"px Archivo, sans-serif"; x.fillStyle = "#8b9097";
-    try { x.letterSpacing = (big*.03)+"px"; } catch (e) {}
-    x.fillText("STC·S01", cx, y1 + big*.64);
-    if (b.full) { x.setLineDash([R*1.2, R*.8]); x.lineWidth = R*.4; x.strokeStyle = "#8b9097"; x.strokeRect(cx + big*1.1, cy - big*1.05, R*15, R*15); x.font = "700 "+(R*3)+"px Archivo, sans-serif"; x.fillStyle = "#8b9097"; x.fillText("NFC", cx + big*1.1 + R*7.5, cy - big*1.05 + R*8.6); }
+  if (info) {
+    const X = mk(W, H), x = X.getContext("2d"), cx = T.cpx[0]; let cy = T.cpx[1];
+    const accent0 = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#3a4f9a";
+    const accent = mix(accent0, "#ffffff", lum(accent0) < .2 ? .3 : .1);   // lifted a touch so it reads on black hook tape
+    const INK = "#eef0f2", CHROME = "#c9cdd2", MUTE = "#80858d", HAIR = "rgba(201,205,210,.32)";
+    // one helper, the site's type system: Archivo at a set width, tracked in em, or the Unbounded wordmark
+    const say = (str, X0, Y0, mm, o) => {
+      o = o || {};
+      x.font = (o.w || 500) + " " + (mm*R) + "px " + (o.fam || "Archivo") + ", Archivo, sans-serif";
+      try { x.fontStretch = o.wide === false ? "normal" : "expanded"; } catch (e) {}
+      try { x.letterSpacing = ((o.ls || 0)*mm*R) + "px"; } catch (e) {}
+      x.fillStyle = o.c || INK; x.textAlign = o.a || "left"; x.textBaseline = "alphabetic";
+      x.fillText(str, X0, Y0);
+      return x.measureText(str).width;
+    };
+    const rule = (X0, Y0, w) => { x.fillStyle = HAIR; x.fillRect(X0, Y0, w, .22*R); };
+    const dashes = (X0, Y0, on) => { [0, 1].forEach(j => { x.fillStyle = j < on ? CHROME : "rgba(201,205,210,.28)"; x.fillRect(X0 + j*8.4*R, Y0, 7*R, .45*R); }); };
+    const glyph = (X0, Y0, s) => {   // the canvas mark from the wordmark: dashed rounded frame + one badge
+      x.save(); x.setLineDash([s*.13, s*.09]); x.lineWidth = s*.085; x.strokeStyle = CHROME;
+      x.beginPath(); x.roundRect ? x.roundRect(X0, Y0 + s*.17, s, s*.67, s*.13) : x.rect(X0, Y0 + s*.17, s, s*.67); x.stroke();
+      x.setLineDash([]); x.fillStyle = accent; x.beginPath(); x.arc(X0 + s*.64, Y0 + s*.43, s*.12, 0, 7); x.fill(); x.restore();
+    };
+    const R_ = v => v*R;
+    if (b.full) {
+      const bw = R_(88), bh = R_(68), L = cx - bw/2, Tp = cy - bh/2, Rt = L + bw;
+      // header: wordmark left, series label right, hairline
+      const wWm = say("statch", L, Tp + R_(5.6), 6, { fam: "Unbounded", w: 500, wide: false, ls: -.02, c: INK });
+      glyph(L + wWm + R_(1.2), Tp + R_(.2), R_(6.2));
+      say("SERIES 01 /", Rt, Tp + R_(4.8), 2.3, { ls: .35, c: MUTE, a: "right" });
+      rule(L, Tp + R_(9), bw);
+      // the number, fitted to the plate
+      let nMM = 27, wN, wT;
+      const num = String(info.num).padStart(3, "0");
+      for (;;) {
+        x.font = "900 " + R_(nMM) + "px Archivo"; try { x.fontStretch = "expanded"; x.letterSpacing = (-.035*nMM*R) + "px"; } catch (e) {}
+        wN = x.measureText(num).width;
+        x.font = "800 " + R_(nMM*.3) + "px Archivo"; try { x.fontStretch = "normal"; x.letterSpacing = "0px"; } catch (e) {}
+        wT = x.measureText(info.total).width;
+        if (wN + wT + R_(2) <= bw*.78 || nMM < 12) break;
+        nMM -= .5;
+      }
+      const base = Tp + R_(13) + R_(nMM*.73);
+      say(num, L - R_(nMM*.03), base, nMM, { w: 900, ls: -.035, c: accent });
+      say(info.total, L + wN + R_(1.2), base, nMM*.3, { w: 800, wide: false, c: INK });
+      say("N°", L + wN + R_(1.4), base - R_(nMM*.73) + R_(2.6), 2.4, { w: 600, ls: .2, c: MUTE });
+      // name as a two-line heading, rarity as a tracked label, progress dashes
+      const nameY = base + R_(8.4);
+      const words = info.name.toUpperCase().split(" "), l1 = words[0], l2 = words.slice(1).join(" ");
+      say(l1, L, nameY, 4.8, { w: 900, ls: -.025, c: INK });
+      if (l2) say(l2, L, nameY + R_(4.5), 4.8, { w: 900, ls: -.025, c: INK });
+      say(info.meta, L, nameY + R_(10), 2.1, { ls: .35, c: MUTE });
+      dashes(L, nameY + R_(12.6), 2);
+      // NFC: dashed square, right side
+      const q = R_(14), qx = Rt - q, qy = nameY - R_(4.2);
+      x.save(); x.setLineDash([R_(1.1), R_(.8)]); x.lineWidth = R_(.32); x.strokeStyle = CHROME; x.strokeRect(qx, qy, q, q); x.restore();
+      say("NFC", qx + q/2, qy + q/2 + R_(1), 2.8, { w: 800, ls: .3, c: CHROME, a: "center" });
+      say("TAP TO VERIFY", Rt, qy + q + R_(3.4), 1.7, { ls: .3, c: MUTE, a: "right" });
+      // footer: hairline, serial, sign-off
+      rule(L, Tp + bh - R_(5.4), bw);
+      say(info.serial, L, Tp + bh - R_(1), 2.3, { w: 600, ls: .3, c: CHROME });
+      say("INCOMPLETE BY DESIGN", Rt, Tp + bh - R_(1), 1.9, { ls: .35, c: MUTE, a: "right" });
+    } else {
+      // compact plate for small pieces, centred on the silhouette
+      const sz = Math.min(b.w, b.h*1.25)*.3, num = String(info.num).padStart(3, "0");
+      const cyo = cy; const cyU = cyo - R_(sz*.32);
+      cy = cyU;
+      say("statch", cx, cy - R_(sz*.98), sz*.3, { fam: "Unbounded", w: 500, wide: false, ls: -.02, c: INK, a: "center" });
+      let nMM = sz;
+      for (;;) { x.font = "900 " + R_(nMM) + "px Archivo"; try { x.fontStretch = "expanded"; x.letterSpacing = (-.035*nMM*R) + "px"; } catch (e) {} if (x.measureText(num).width <= R_(b.w*.74) || nMM < 4) break; nMM -= .25; }
+      say(num, cx, cy + R_(nMM*.3), nMM, { w: 900, ls: -.035, c: accent, a: "center" });
+      say(info.total, cx, cy + R_(nMM*.3 + sz*.42), sz*.3, { w: 800, wide: false, c: INK, a: "center" });
+      x.fillStyle = HAIR; x.fillRect(cx - R_(sz*.55), cy + R_(nMM*.3 + sz*.6), R_(sz*1.1), R_(.2));
+      let sMM = sz*.13;
+      for (;;) { x.font = "600 " + R_(sMM) + "px Archivo"; try { x.fontStretch = "expanded"; x.letterSpacing = (.3*sMM*R) + "px"; } catch (e) {} if (x.measureText(info.serial).width <= R_(b.w*.7) || sMM < .9) break; sMM -= .05; }
+      say(info.serial, cx, cy + R_(nMM*.3 + sz*.86), sMM, { w: 600, ls: .3, c: MUTE, a: "center" });
+      cy = cyo;
+    }
+    // printed, not perfect: knock tiny specks out of the ink so it reads as screen print on hook tape
+    const rnd2 = hashRand(W*3 + H); x.globalCompositeOperation = "destination-out"; x.fillStyle = "rgba(0,0,0,.55)";
+    for (let n = 0; n < W*H/55; n++) x.fillRect(rnd2()*W, rnd2()*H, R*.06 + rnd2()*R*.06, R*.06);
+    x.globalCompositeOperation = "source-over";
     const M = mk(W, H), m = M.getContext("2d");
     m.translate(2*cx, 0); m.scale(-1, 1); m.drawImage(X, 0, 0); m.setTransform(1, 0, 0, 1, 0, 0);
     m.globalCompositeOperation = "destination-in"; m.drawImage(T.fillM, 0, 0, W, H);
@@ -946,7 +1015,7 @@ function shadowMat(T){
   x.filter = "none"; x.globalCompositeOperation = "source-in"; x.fillStyle = "#2a2018"; x.fillRect(0, 0, cv.width, cv.height);
   return (G.shadowTex[T.b.id] = new G.T3.MeshBasicMaterial({ map: canvasTex(cv, true), transparent: true, depthWrite: false, opacity: 0 }));
 }
-function buildPatch(T, serial){
+function buildPatch(T, info){
   const T3 = G.T3, b = T.b, grp = new T3.Group();
   const shape = new T3.Shape(T.contour.map(([x, y]) => new T3.Vector2(x - b.w/2, -(y - b.h/2))));
   const body = new T3.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: true, bevelThickness: BEV, bevelSize: .45, bevelSegments: 3, curveSegments: 2 });
@@ -954,7 +1023,7 @@ function buildPatch(T, serial){
   const face = new T3.ShapeGeometry(shape), pos = face.attributes.position, uv = face.attributes.uv;
   for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + b.w/2 + PAD)/T.Wmm, (pos.getY(i) + b.h/2 + PAD)/T.Hmm);
   const front = new T3.Mesh(face, faceMat(T)); front.position.z = DEPTH/2 + BEV + .03;
-  const backMat = new T3.MeshPhongMaterial({ map: canvasTex(backCanvas(T, serial), true), side: T3.BackSide, specular: 0x161616, shininess: 10 });
+  const backMat = new T3.MeshPhongMaterial({ map: canvasTex(backCanvas(T, info), true), side: T3.BackSide, color: 0xb0b0b0, specular: 0x000000, shininess: 2 });
   const back = new T3.Mesh(face, backMat); back.position.z = -(DEPTH/2 + BEV + .03);
   const sh = new T3.Mesh(new T3.PlaneGeometry(T.Wmm*1.08, T.Hmm*1.08), shadowMat(T).clone());
   sh.position.set(.5, -.9, -(DEPTH/2 + BEV + .4));
@@ -970,12 +1039,18 @@ function disposeGroup(g){
   if (g.userData.backMat) { g.userData.backMat.map.dispose(); g.userData.backMat.dispose(); }
   if (g.userData.sh) g.userData.sh.material.dispose();
 }
+function backInfo(b){
+  const n = b.full ? state.pieceNo : state.serial, tot = b.full ? "/050" : "/482";
+  return { num: n, total: tot, name: b.name, meta: b.full ? "HIDDEN · NFC · 50 MADE" : b.rarity.toUpperCase() + " · SERIES 01",
+    serial: "STC·S01·" + String(n).padStart(3, "0") + tot };
+}
 async function buildScene(){
-  await fontsReady; await genAll(); await loadTee();
+  await fontsReady;
+  try { await Promise.all(["900 40px Archivo", "800 40px Archivo", "500 40px Archivo", "600 40px Archivo", "500 40px Unbounded"].map(f => document.fonts.load(f))); } catch (e) {} await genAll(); await loadTee();
   disposeGroup(hero); pieces.forEach(disposeGroup); pieces = [];
   const lead = leadOf(state.comp), rnd = hashRand(state.serial*31 + state.comp.length);
   const leadP = state.comp.find(p => p.id === lead.id);
-  hero = buildPatch(TEX[lead.id], state.serial); hero.userData.p = leadP; G.scene.add(hero);
+  hero = buildPatch(TEX[lead.id], backInfo(lead)); hero.userData.p = leadP; G.scene.add(hero);
   state.comp.filter(p => p !== leadP).forEach((p, i) => {
     const g = buildPatch(TEX[p.id], null);
     g.userData.p = p; g.userData.i = i;
@@ -1100,6 +1175,7 @@ async function shuffle(){
   state.comp = newComposition();
   let s; do { s = 1 + Math.floor(Math.random()*482); } while (s === state.serial);
   state.serial = s;
+  state.pieceNo = 1 + Math.floor(Math.random()*50);
   applyAccent(); setTag();
   if (G) await buildScene();
   popStart = performance.now();
